@@ -12,7 +12,7 @@ void key_event_callback(GLFWwindow* window, int key, int scancode, int action, i
 
 bool draw_wireframe = false;
 
-struct VaoData* vaos;
+struct VaoData** vaos;
 unsigned int vao_count = 0;
 unsigned int current_vao = 0;
 
@@ -92,6 +92,8 @@ void key_event_callback(GLFWwindow* window, int key, int scancode, int action, i
         } else {
             current_vao += 1;
         }
+
+        printf("Switched to VAO \"%s\"\n", vaos[current_vao]->name);
     }
 }
 
@@ -179,22 +181,25 @@ void add_vao(struct VaoData* vao) {
     vaos = realloc(vaos, (vao_count+1)*sizeof(struct VaoData));
     vao_count += 1;
 
-    vaos[vao_count-1] = *vao;
+    printf("Created VAO with address: %p\n", vao);
+
+    vaos[vao_count-1] = vao;
 }
 
 void vertex_spec() {
     // Defining each vertex
     double vertices1[] = {
-        -1.0f, -0.5f, 0.0f, // left  
-        -0.0f, -0.5f, 0.0f, // right 
-        -0.5f, 0.5f, 0.0f,  // top  
-        
-        1.0f, -0.5f, 0.0f, // left  
-        0.0f, -0.5f, 0.0f, // right 
-        0.5f, 0.5f, 0.0f  // top  
+        // Vertices          // Colors
+        -1.0f, -0.5f, 0.0f,  1.0f, 0.0f, 0.0f,
+        -0.0f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f,
+        -0.5f, 0.5f, 0.0f,   0.0f, 0.0f, 1.0f,
+
+        1.0f, -0.5f, 0.0f,   1.0f, 0.0f, 0.0f,
+        0.0f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,
+        0.5f, 0.5f, 0.0f,    0.0f, 0.0f, 1.0f,
     };
 
-    GLuint vertex_count1 = (sizeof(vertices1) / sizeof(double)) / 3;
+    GLuint vertex_count1 = ((sizeof(vertices1) / sizeof(double)) / 6);
 
     // Setting VBO do draw the defined vertices
     // and VAO to remember what to draw
@@ -207,15 +212,19 @@ void vertex_spec() {
     glBindBuffer(GL_ARRAY_BUFFER, vbo1);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices1), vertices1, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_DOUBLE, GL_FALSE, 3*sizeof(double), (void*)0);
+    //glVertexAttribPointer(index, size, type, normalized, stride, offset_pointer);
+    glVertexAttribPointer(0, 3, GL_DOUBLE, GL_FALSE, 6*sizeof(double), (void*)0);
+    glVertexAttribPointer(1, 3, GL_DOUBLE, GL_FALSE, 6*sizeof(double), (void*)(3*sizeof(double)));
+
     glEnableVertexAttribArray(0);
+    glEnableVertexAttribArray(1);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     glBindVertexArray(0);
 
     struct VaoData temp1 = {
-        vao1, vertex_count1
+        vao1, vertex_count1, "Triangles"
     };
 
     struct VaoData *vao_1 = malloc(sizeof(struct VaoData));
@@ -225,18 +234,17 @@ void vertex_spec() {
 
     // Doing it again
 
-    // Defining each vertex
     double vertices2[] = {
-        -1.0f, 0.5f, 0.0f, // left  
-        -0.0f, 0.5f, 0.0f, // right 
-        -0.5f, -0.5f, 0.0f,  // top  
-        
-        1.0f, 0.5f, 0.0f, // left  
-        0.0f, 0.5f, 0.0f, // right 
-        0.5f, -0.5f, 0.0f  // top  
-    };
+        // Vertices          // Colors
+        -1.0f, 0.5f, 0.0f,  1.0f, 0.0f, 0.0f,
+        -0.0f, 0.5f, 0.0f,  0.0f, 1.0f, 0.0f,
+        -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,
 
-    GLuint vertex_count2 = (sizeof(vertices1) / sizeof(double)) / 3;
+        1.0f, 0.5f, 0.0f,   1.0f, 0.0f, 0.0f,
+        0.0f, 0.5f, 0.0f,   0.0f, 1.0f, 0.0f,
+        0.5f, -0.5f, 0.0f,    0.0f, 0.0f, 1.0f,
+    };
+    GLuint vertex_count2 = (sizeof(vertices1) / sizeof(double)) / 6;
 
     // Setting VBO do draw the defined vertices
     // and VAO to remember what to draw
@@ -249,21 +257,31 @@ void vertex_spec() {
     glBindBuffer(GL_ARRAY_BUFFER, vbo2);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices2), vertices2, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_DOUBLE, GL_FALSE, 3*sizeof(double), (void*)0);
+    //glVertexAttribPointer(index, size, type, normalized, stride, offset_pointer);
+    glVertexAttribPointer(0, 3, GL_DOUBLE, GL_FALSE, 6*sizeof(double), (void*)0);
+    glVertexAttribPointer(1, 3, GL_DOUBLE, GL_FALSE, 6*sizeof(double), (void*)(3*sizeof(double)));
+
     glEnableVertexAttribArray(0);
+    glEnableVertexAttribArray(1);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     glBindVertexArray(0);
 
     struct VaoData temp2 = {
-        vao2, vertex_count2
+        vao2, vertex_count2, "Inverted triangles"
     };
 
     struct VaoData *vao_2 = malloc(sizeof(struct VaoData));
     memcpy(vao_2, &temp2, sizeof(struct VaoData));
 
     add_vao(vao_2);
+}
+
+// Transforms coordinates from 0 -> window_size to -1 -> 1
+void to_range(double max_x, double max_y, double* x, double* y) {
+    *x = (*x - (max_x/2.0f)) / (max_x/2.0f);
+    *y = -(*y - (max_y/2.0f)) / (max_y/2.0f);
 }
 
 int main() {
@@ -279,7 +297,7 @@ int main() {
     vertex_spec();
 
     for (int i=0; i <  vao_count; i++) {
-        printf("VAO %d -> ID: %u, Vertex count: %u\n", i, vaos[i].vao, vaos[i].vertex_count);
+        printf("VAO %d -> Name: %s, ID: %u, Vertex count: %u\n", i, vaos[i]->name, vaos[i]->vao, vaos[i]->vertex_count);
     }
 
     // The VAO to use when drawing
@@ -288,7 +306,7 @@ int main() {
     // Main loop
     while (!glfwWindowShouldClose(window)) {
         // Selecting the right VAO to draw
-        vao = vaos[current_vao];
+        vao = *vaos[current_vao];
 
         // Input
         handle_input(window);
@@ -307,6 +325,10 @@ int main() {
         glUseProgram(shader_program);
         glBindVertexArray(vao.vao);
 
+        ///////////////////
+
+        ///////////////////
+
         // Finally drawing the vertices
         glDrawArrays(GL_TRIANGLES, 0, vao.vertex_count);
 
@@ -314,6 +336,13 @@ int main() {
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
+
+    for (int i=0; i < vao_count; i++) {
+        printf("freed address: %p\n", vaos[i]);
+        free(vaos[i]);
+    }
+
+    glfwTerminate();
 
     return EXIT_SUCCESS;
 }

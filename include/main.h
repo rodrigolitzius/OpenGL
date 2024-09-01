@@ -10,7 +10,7 @@
 #define OPGL_MINOR_VER 3
 
 struct VaoData {
-    GLuint vao; unsigned int vertex_count;
+    GLuint vao; unsigned int vertex_count; char name[128];
 };
 
 #endif
