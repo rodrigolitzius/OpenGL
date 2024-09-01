@@ -8,6 +8,9 @@
 #include <main.h>
 
 void finish();
+void key_event_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
+
+bool draw_wireframe = false;
 
 // Print an error with glfw and exit
 void exit_with_error_glfw(const char* error_text) {
@@ -60,6 +63,7 @@ void initialize(GLFWwindow** window) {
 
     // Set OpenGL viewport when the window is resized
     glfwSetFramebufferSizeCallback(*window, framebuffer_size_callback);
+    glfwSetKeyCallback(*window, key_event_callback);
 
     // Intiializing GLAD
     return_value = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
@@ -72,10 +76,14 @@ void initialize(GLFWwindow** window) {
     glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 }
 
-// Handles the input, duh
 void handle_input(GLFWwindow* window) {
-    if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS) {
-        printf("Input handling is working!\n");
+    // Does nothing for now
+}
+
+// Runs at every key press
+void key_event_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    if (key == GLFW_KEY_W && action == GLFW_PRESS) {
+        draw_wireframe = !draw_wireframe;
     }
 }
 
@@ -169,10 +177,16 @@ int main() {
 
     // Defining each vertex
     double vertices[] = {
-        -0.5f, -0.5f, 0.0f,
-        0.5f, -0.5f, 0.0f,
-        0.0f, 0.5f, 0.0f
+        -1.0f, -0.5f, 0.0f, // left  
+        -0.0f, -0.5f, 0.0f, // right 
+        -0.5f, 0.5f, 0.0f,  // top  
+        
+        1.0f, -0.5f, 0.0f, // left  
+        0.0f, -0.5f, 0.0f, // right 
+        0.5f, 0.5f, 0.0f  // top  
     };
+
+    GLuint vertex_count = sizeof(vertices) / sizeof(double);
 
     // Setting VBO do draw the defined vertices
     // and VAO to remember what to draw
@@ -186,7 +200,7 @@ int main() {
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
     glVertexAttribPointer(0, 3, GL_DOUBLE, GL_FALSE, 3*sizeof(double), (void*)0);
-    glEnableVertexAttribArray(0);  
+    glEnableVertexAttribArray(0);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
@@ -201,12 +215,18 @@ int main() {
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
+        if (draw_wireframe) {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        } else {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        }
+
         // Drawing with VAO
         glUseProgram(shader_program);
         glBindVertexArray(vao);
 
         // Finally drawing the vertices
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        glDrawArrays(GL_TRIANGLES, 0, vertex_count);
 
         // Updating window
         glfwSwapBuffers(window);
