@@ -3,8 +3,14 @@
 #include <stdbool.h>
 #include <string.h>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
 #include <glad.h>
 #include <GLFW/glfw3.h>
+
+#include "functions.h"
+#include "texture.h"
 
 #include <main.h>
 
@@ -15,21 +21,6 @@ bool draw_wireframe = false;
 struct VaoData** vaos;
 unsigned int vao_count = 0;
 unsigned int current_vao = 0;
-
-// Print an error with glfw and exit
-void exit_with_error_glfw(const char* error_text) {
-    const char* error_description = NULL;
-    glfwGetError(&error_description);
-
-    fprintf(stderr, "\n[E] ERROR: %s\n%s\n\n", error_text, (char*) error_description);
-    exit(EXIT_FAILURE);
-}
-
-// Print a generic error and exit
-void exit_with_error_generic(const char* error_text, const char* error_description) {
-    fprintf(stderr, "\n[E] ERROR: %s\n%s\n\n", error_text, error_description);
-    exit(EXIT_FAILURE);
-}
 
 // Should run when the size of the window is changed
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
@@ -74,49 +65,6 @@ void initialize(GLFWwindow** window) {
     glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 }
 
-void handle_input(GLFWwindow* window) {
-    // Does nothing for now
-}
-
-// Runs at every key press
-void key_event_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    // Switch wireframe mode
-    if (key == GLFW_KEY_W && action == GLFW_PRESS) {
-        draw_wireframe = !draw_wireframe;
-    }
-
-    // Change VAO
-    if (key == GLFW_KEY_V && action == GLFW_PRESS) {
-        if (current_vao == vao_count-1) {
-            current_vao = 0;
-        } else {
-            current_vao += 1;
-        }
-
-        printf("Switched to VAO \"%s\"\n", vaos[current_vao]->name);
-    }
-}
-
-// Reads all contents of a file
-void* file_read_all(const char* file_path) {
-    FILE* file = fopen(file_path, "r");
-    // Finding the size of the file in bytes
-    fseek(file, 0, SEEK_END);
-    size_t file_size = ftell(file);
-    fseek(file, 0, SEEK_SET);
-
-    // Allocating enough memory to hold the data in the file
-    void* contents = malloc(file_size);
-
-    // Reading all the data
-    fread(contents, 1, file_size, file);
-
-    // Closing file
-    fclose(file);
-
-    return contents;
-}
-
 // Compile a GLSL shader
 GLuint compile_shader(const GLchar* source, GLenum type) {
     // Creating the shader object
@@ -139,6 +87,29 @@ GLuint compile_shader(const GLchar* source, GLenum type) {
     }
 
     return shader;
+}
+
+void handle_input(GLFWwindow* window) {
+    // Does nothing for now
+}
+
+// Runs at every key press
+void key_event_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    // Switch wireframe mode
+    if (key == GLFW_KEY_W && action == GLFW_PRESS) {
+        draw_wireframe = !draw_wireframe;
+    }
+
+    // Change VAO
+    if (key == GLFW_KEY_V && action == GLFW_PRESS) {
+        if (current_vao == vao_count-1) {
+            current_vao = 0;
+        } else {
+            current_vao += 1;
+        }
+
+        printf("Switched to VAO \"%s\"\n", vaos[current_vao]->name);
+    }
 }
 
 // Links shaders to a shader program
@@ -189,17 +160,17 @@ void add_vao(struct VaoData* vao) {
 void vertex_spec() {
     // Defining each vertex
     double vertices1[] = {
-        // Vertices          // Colors
-        -1.0f, -0.5f, 0.0f,  1.0f, 0.0f, 0.0f,
-        -0.0f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f,
-        -0.5f, 0.5f, 0.0f,   0.0f, 0.0f, 1.0f,
+        // Vertices         // Colors  // Texture coords
+        -0.5f, 0.5,   0.0,   1, 0, 0,   0, 1, // Top left
+        0.5f,  0.5f,  0.0f,  0, 1, 0,   1, 1, // Top right
+        -0.5f, -0.5f, 0.0f,  0, 0, 1,   0, 0, // Bottom left
 
-        1.0f, -0.5f, 0.0f,   1.0f, 0.0f, 0.0f,
-        0.0f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,
-        0.5f, 0.5f, 0.0f,    0.0f, 0.0f, 1.0f,
+        0.5f,  -0.5,  0.0,   1, 1, 1,   1, 0, // Bottom right
+        0.5f,  0.5f,  0.0f,  0, 1, 0,   1, 1, // Top right
+        -0.5f, -0.5f, 0.0f,  0, 0, 1,   0, 0, // Bottom left
     };
 
-    GLuint vertex_count1 = ((sizeof(vertices1) / sizeof(double)) / 6);
+    GLuint vertex_count1 = ((sizeof(vertices1) / sizeof(double)) / 8);
 
     // Setting VBO do draw the defined vertices
     // and VAO to remember what to draw
@@ -213,18 +184,20 @@ void vertex_spec() {
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices1), vertices1, GL_STATIC_DRAW);
 
     //glVertexAttribPointer(index, size, type, normalized, stride, offset_pointer);
-    glVertexAttribPointer(0, 3, GL_DOUBLE, GL_FALSE, 6*sizeof(double), (void*)0);
-    glVertexAttribPointer(1, 3, GL_DOUBLE, GL_FALSE, 6*sizeof(double), (void*)(3*sizeof(double)));
+    glVertexAttribPointer(0, 3, GL_DOUBLE, GL_FALSE, 8*sizeof(double), (void*)0);
+    glVertexAttribPointer(1, 3, GL_DOUBLE, GL_FALSE, 8*sizeof(double), (void*)(3*sizeof(double)));
+    glVertexAttribPointer(2, 2, GL_DOUBLE, GL_FALSE, 8*sizeof(double), (void*)(6*sizeof(double)));
 
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
+    glEnableVertexAttribArray(2);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     glBindVertexArray(0);
 
     struct VaoData temp1 = {
-        vao1, vertex_count1, "Triangles"
+        vao1, vertex_count1, "Rectangle with texture"
     };
 
     struct VaoData *vao_1 = malloc(sizeof(struct VaoData));
@@ -232,7 +205,9 @@ void vertex_spec() {
 
     add_vao(vao_1);
 
-    // Doing it again
+    //////////////////////
+    //////////////////////
+    //////////////////////
 
     double vertices2[] = {
         // Vertices          // Colors
@@ -276,6 +251,49 @@ void vertex_spec() {
     memcpy(vao_2, &temp2, sizeof(struct VaoData));
 
     add_vao(vao_2);
+
+    //////////////////////
+    //////////////////////
+    //////////////////////
+
+    double vertices3[] = {
+        // Vertices          // Colors
+        0.0f, 0.5f, 0.0f,  1.0f, 1.0f, 0.0f,
+        -0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 1.0f,
+        0.5f, -0.5f, 0.0f,   1.0f, 0.0f, 1.0f,
+    };
+    GLuint vertex_count3 = (sizeof(vertices3) / sizeof(double)) / 6;
+
+    // Setting VBO do draw the defined vertices
+    // and VAO to remember what to draw
+    GLuint vao3, vbo3;
+    glGenVertexArrays(1, &vao3);
+    glGenBuffers(1, &vbo3);
+
+    glBindVertexArray(vao3);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo3);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices3), vertices3, GL_STATIC_DRAW);
+
+    //glVertexAttribPointer(index, size, type, normalized, stride, offset_pointer);
+    glVertexAttribPointer(0, 3, GL_DOUBLE, GL_FALSE, 6*sizeof(double), (void*)0);
+    glVertexAttribPointer(1, 3, GL_DOUBLE, GL_FALSE, 6*sizeof(double), (void*)(3*sizeof(double)));
+
+    glEnableVertexAttribArray(0);
+    glEnableVertexAttribArray(1);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    glBindVertexArray(0);
+
+    struct VaoData temp3 = {
+        vao3, vertex_count3, "CMY triangle"
+    };
+
+    struct VaoData *vao_3 = malloc(sizeof(struct VaoData));
+    memcpy(vao_3, &temp3, sizeof(struct VaoData));
+
+    add_vao(vao_3);
 }
 
 // Transforms coordinates from 0 -> window_size to -1 -> 1
@@ -300,6 +318,8 @@ int main() {
         printf("VAO %d -> Name: %s, ID: %u, Vertex count: %u\n", i, vaos[i]->name, vaos[i]->vao, vaos[i]->vertex_count);
     }
 
+    GLuint texture = load_texture("./textures/container.jpg");
+
     // The VAO to use when drawing
     struct VaoData vao;
 
@@ -323,6 +343,7 @@ int main() {
 
         // Drawing with VAO
         glUseProgram(shader_program);
+        glBindTexture(GL_TEXTURE_2D, texture);
         glBindVertexArray(vao.vao);
 
         ///////////////////
