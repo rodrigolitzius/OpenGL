@@ -2,12 +2,14 @@
 
 out vec4 FragColor;
 
-in vec4 my_color;
-in vec2 tex_coord;
+in vec4 frag_shader_color;
+in vec2 frag_shader_tex_coord;
 
-uniform sampler2D my_texture;
+uniform sampler2D texture1;
+uniform sampler2D texture2;
 
-void main()
-{
-    FragColor = texture(my_texture, tex_coord) * vec4(my_color);
+uniform float blend;
+
+void main() {
+    FragColor = mix(texture(texture1, frag_shader_tex_coord), texture(texture2, frag_shader_tex_coord), blend);
 }

@@ -65,30 +65,6 @@ void initialize(GLFWwindow** window) {
     glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 }
 
-// Compile a GLSL shader
-GLuint compile_shader(const GLchar* source, GLenum type) {
-    // Creating the shader object
-    GLuint shader;
-    shader = glCreateShader(type);
-
-    // COmpiling from the source code
-    glShaderSource(shader, 1, &source, NULL);
-    glCompileShader(shader);
-
-    // Checking for erros in the compilation
-    GLint shader_compiled = GL_TRUE;
-    char compiling_log[8192];
-
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &shader_compiled);
-
-    if (shader_compiled == GL_FALSE) {
-        glGetShaderInfoLog(shader, 8192, NULL, compiling_log);
-        exit_with_error_generic("Failed to compile shader", compiling_log);
-    }
-
-    return shader;
-}
-
 void handle_input(GLFWwindow* window) {
     // Does nothing for now
 }
@@ -98,6 +74,12 @@ void key_event_callback(GLFWwindow* window, int key, int scancode, int action, i
     // Switch wireframe mode
     if (key == GLFW_KEY_W && action == GLFW_PRESS) {
         draw_wireframe = !draw_wireframe;
+
+        if (draw_wireframe == true) {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        } else {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        }
     }
 
     // Change VAO
@@ -160,13 +142,13 @@ void add_vao(struct VaoData* vao) {
 void vertex_spec() {
     // Defining each vertex
     double vertices1[] = {
-        // Vertices         // Colors  // Texture coords
-        -0.5f, 0.5,   0.0,   1, 0, 0,   0, 1, // Top left
-        0.5f,  0.5f,  0.0f,  0, 1, 0,   1, 1, // Top right
+        // Vertices         // Colors   // Texture coords
+        -0.5f, 0.5,   0.0,   1, 0, 0,   0, 2, // Top left
+        0.5f,  0.5f,  0.0f,  0, 1, 0,   2, 2, // Top right
         -0.5f, -0.5f, 0.0f,  0, 0, 1,   0, 0, // Bottom left
 
-        0.5f,  -0.5,  0.0,   1, 1, 1,   1, 0, // Bottom right
-        0.5f,  0.5f,  0.0f,  0, 1, 0,   1, 1, // Top right
+        0.5f,  -0.5,  0.0,   1, 1, 0,   2, 0, // Bottom right
+        0.5f,  0.5f,  0.0f,  0, 1, 0,   2, 2, // Top right
         -0.5f, -0.5f, 0.0f,  0, 0, 1,   0, 0, // Bottom left
     };
 
@@ -210,14 +192,14 @@ void vertex_spec() {
     //////////////////////
 
     double vertices2[] = {
-        // Vertices          // Colors
+        // Vertices         // Colors
         -1.0f, 0.5f, 0.0f,  1.0f, 0.0f, 0.0f,
         -0.0f, 0.5f, 0.0f,  0.0f, 1.0f, 0.0f,
-        -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,
+        -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f,
 
         1.0f, 0.5f, 0.0f,   1.0f, 0.0f, 0.0f,
         0.0f, 0.5f, 0.0f,   0.0f, 1.0f, 0.0f,
-        0.5f, -0.5f, 0.0f,    0.0f, 0.0f, 1.0f,
+        0.5f, -0.5f, 0.0f,  0.0f, 0.0f, 1.0f,
     };
     GLuint vertex_count2 = (sizeof(vertices1) / sizeof(double)) / 6;
 
@@ -258,7 +240,7 @@ void vertex_spec() {
 
     double vertices3[] = {
         // Vertices          // Colors
-        0.0f, 0.5f, 0.0f,  1.0f, 1.0f, 0.0f,
+        0.0f, 0.5f, 0.0f,    1.0f, 1.0f, 0.0f,
         -0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 1.0f,
         0.5f, -0.5f, 0.0f,   1.0f, 0.0f, 1.0f,
     };
@@ -296,12 +278,6 @@ void vertex_spec() {
     add_vao(vao_3);
 }
 
-// Transforms coordinates from 0 -> window_size to -1 -> 1
-void to_range(double max_x, double max_y, double* x, double* y) {
-    *x = (*x - (max_x/2.0f)) / (max_x/2.0f);
-    *y = -(*y - (max_y/2.0f)) / (max_y/2.0f);
-}
-
 int main() {
     // Initializing
     GLFWwindow* window;
@@ -318,10 +294,28 @@ int main() {
         printf("VAO %d -> Name: %s, ID: %u, Vertex count: %u\n", i, vaos[i]->name, vaos[i]->vao, vaos[i]->vertex_count);
     }
 
-    GLuint texture = load_texture("./textures/container.jpg");
+    struct TextureWrap texture1_wrap = {
+        GL_REPEAT, GL_REPEAT,
+        GL_LINEAR, GL_LINEAR_MIPMAP_LINEAR
+    };
+
+    struct TextureWrap texture2_wrap = {
+        GL_REPEAT, GL_MIRRORED_REPEAT,
+        GL_LINEAR, GL_LINEAR_MIPMAP_LINEAR
+    };
+
+    GLuint texture1 = load_texture("./textures/container.jpg", GL_RGB, texture1_wrap, false);
+    GLuint texture2 = load_texture("./textures/awesomeface.png", GL_RGBA, texture2_wrap, true);
 
     // The VAO to use when drawing
     struct VaoData vao;
+
+    glUseProgram(shader_program);
+    glUniform1i(glGetUniformLocation(shader_program, "texture1"), 0);
+    glUniform1i(glGetUniformLocation(shader_program, "texture2"), 1);
+
+    GLuint blend_variable = glGetUniformLocation(shader_program, "blend");
+    glUniform1f(blend_variable, 0);
 
     // Main loop
     while (!glfwWindowShouldClose(window)) {
@@ -335,15 +329,15 @@ int main() {
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        if (draw_wireframe) {
-            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-        } else {
-            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-        }
-
         // Drawing with VAO
         glUseProgram(shader_program);
-        glBindTexture(GL_TEXTURE_2D, texture);
+        
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, texture1);
+
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, texture2);
+
         glBindVertexArray(vao.vao);
 
         ///////////////////
