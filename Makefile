@@ -4,7 +4,7 @@ OUTPUT=main
 
 SOURCES=$(wildcard $(SRC)/*.c)
 OBJECTS=$(patsubst %.c,%.o,$(patsubst $(SRC)/%,$(OBJ)/%,$(SOURCES)))
-CFLAGS=-lglfw -lm -lOpenGL
+CFLAGS=-lglfw -lm -lOpenGL -lcglm
 CFLAGS+=-I./include
 CFLAGS+=-g -O0
 
