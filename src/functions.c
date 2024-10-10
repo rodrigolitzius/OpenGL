@@ -18,7 +18,6 @@ void exit_with_error_generic(const char* error_text, const char* error_descripti
     exit(EXIT_FAILURE);
 }
 
-// Reads all contents of a file
 void* file_read_all(const char* file_path) {
     FILE* file = fopen(file_path, "r");
     // Finding the size of the file in bytes
@@ -37,8 +36,6 @@ void* file_read_all(const char* file_path) {
 
     // Closing file
     fclose(file);
-
-    printf("%s\n", (char*) contents);
 
     return contents;
 }
