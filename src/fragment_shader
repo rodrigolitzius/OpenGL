@@ -7,9 +7,13 @@ in vec2 frag_shader_tex_coord;
 
 uniform sampler2D texture1;
 uniform sampler2D texture2;
-
 uniform float blend;
 
+uniform bool use_texture;
+
 void main() {
-    FragColor = mix(texture(texture1, frag_shader_tex_coord), texture(texture2, frag_shader_tex_coord), blend);
+    if (use_texture)
+        FragColor = mix(texture(texture1, frag_shader_tex_coord), texture(texture2, frag_shader_tex_coord), blend);
+    else 
+        FragColor = frag_shader_color;
 }

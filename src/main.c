@@ -143,12 +143,12 @@ void vertex_spec() {
     // Defining each vertex
     double vertices1[] = {
         // Vertices         // Colors   // Texture coords
-        -0.5f, 0.5,   0.0,   1, 0, 0,   0, 2, // Top left
-        0.5f,  0.5f,  0.0f,  0, 1, 0,   2, 2, // Top right
+        -0.5f, 0.5,   0.0,   1, 0, 0,   0, 3, // Top left
+        0.5f,  0.5f,  0.0f,  0, 1, 0,   3, 3, // Top right
         -0.5f, -0.5f, 0.0f,  0, 0, 1,   0, 0, // Bottom left
 
-        0.5f,  -0.5,  0.0,   1, 1, 0,   2, 0, // Bottom right
-        0.5f,  0.5f,  0.0f,  0, 1, 0,   2, 2, // Top right
+        0.5f,  -0.5,  0.0,   1, 1, 0,   3, 0, // Bottom right
+        0.5f,  0.5f,  0.0f,  0, 1, 0,   3, 3, // Top right
         -0.5f, -0.5f, 0.0f,  0, 0, 1,   0, 0, // Bottom left
     };
 
@@ -179,7 +179,7 @@ void vertex_spec() {
     glBindVertexArray(0);
 
     struct VaoData temp1 = {
-        vao1, vertex_count1, "Rectangle with texture"
+        vao1, vertex_count1, "Rectangle with texture", true
     };
 
     struct VaoData *vao_1 = malloc(sizeof(struct VaoData));
@@ -202,6 +202,7 @@ void vertex_spec() {
         0.5f, -0.5f, 0.0f,  0.0f, 0.0f, 1.0f,
     };
     GLuint vertex_count2 = (sizeof(vertices1) / sizeof(double)) / 6;
+
 
     // Setting VBO do draw the defined vertices
     // and VAO to remember what to draw
@@ -226,7 +227,7 @@ void vertex_spec() {
     glBindVertexArray(0);
 
     struct VaoData temp2 = {
-        vao2, vertex_count2, "Inverted triangles"
+        vao2, vertex_count2, "Inverted triangles", false
     };
 
     struct VaoData *vao_2 = malloc(sizeof(struct VaoData));
@@ -269,7 +270,7 @@ void vertex_spec() {
     glBindVertexArray(0);
 
     struct VaoData temp3 = {
-        vao3, vertex_count3, "CMY triangle"
+        vao3, vertex_count3, "CMY triangle", false
     };
 
     struct VaoData *vao_3 = malloc(sizeof(struct VaoData));
@@ -321,6 +322,10 @@ int main() {
     while (!glfwWindowShouldClose(window)) {
         // Selecting the right VAO to draw
         vao = *vaos[current_vao];
+
+        // Telling the fragment shader if texture coordinate information is in the VBO 
+        // so that it doesn't try to sample textures when there is none
+        glUniform1i(glGetUniformLocation(shader_program, "use_texture"), vao.has_texture);
 
         // Input
         handle_input(window);
