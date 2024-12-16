@@ -22,6 +22,9 @@ struct VaoData** vaos;
 unsigned int vao_count = 0;
 unsigned int current_vao = 0;
 
+int window_width;
+int window_height;
+
 double mouse_last_x = WINDOW_WIDTH/2.0f;
 double mouse_last_y = WINDOW_HEIGHT/2.0f;
 
@@ -31,6 +34,8 @@ double fov = 90;
 // Should run when the size of the window is changed
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     glViewport(0, 0, width, height);
+    window_width = width;
+    window_height = height;
 }
 
 void scroll_callback(GLFWwindow* window, double x_offset, double y_offset) {
@@ -377,9 +382,6 @@ int main() {
 
     initialize(&window);
 
-    GLint window_width;
-    GLint window_height;
-
     glfwGetFramebufferSize(window, &window_width, &window_height);
 
     // test();
@@ -438,6 +440,8 @@ int main() {
 
         glm_translate(view_mat, camera->pos);
         glm_perspective(glm_rad(fov), (double)window_width/(double)window_height, 0.1, 100, projection_mat);
+
+        printf("%d, %d\n", window_width, window_height);
 
         vec3 camera_right, camera_up;
         camera_get_up_and_right(camera, &camera_right, &camera_up);
