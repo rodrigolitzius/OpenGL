@@ -29,7 +29,7 @@ double mouse_last_x = WINDOW_WIDTH/2.0f;
 double mouse_last_y = WINDOW_HEIGHT/2.0f;
 
 struct camera* camera;
-double fov = 90;
+double fov = INITIAL_FOV;
 
 // Should run when the size of the window is changed
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
@@ -39,8 +39,13 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 }
 
 void scroll_callback(GLFWwindow* window, double x_offset, double y_offset) {
-    printf("%f\n", fov);
-    fov += y_offset;
+    fov += y_offset * fov/INITIAL_FOV * 2;
+
+    if (fov > 180) {
+        fov = 180;
+    } else if (fov < 0) {
+        fov = 0;
+    }
 }
 
 void mouse_callback(GLFWwindow* window, double x_pos, double y_pos) {
@@ -50,8 +55,9 @@ void mouse_callback(GLFWwindow* window, double x_pos, double y_pos) {
     mouse_last_x = x_pos;
     mouse_last_y = y_pos;
 
-    camera->yaw += (CAMERA_SENSITIVITY * mouse_rel_x_displacement);
-    camera->pitch += (CAMERA_SENSITIVITY * mouse_rel_y_displacement);
+    // fov/INITIAL_FOV decreases the camera sensitivity as you zoom
+    camera->yaw += (CAMERA_SENSITIVITY * (fov/INITIAL_FOV) * mouse_rel_x_displacement);
+    camera->pitch += (CAMERA_SENSITIVITY * (fov/INITIAL_FOV) * mouse_rel_y_displacement);
 }
 
 // Runs at every key press
@@ -81,7 +87,11 @@ void key_event_callback(GLFWwindow* window, int key, int scancode, int action, i
 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
     if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
-        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        if (glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED) {
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        } else {
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        }
     }
 }
 
@@ -413,7 +423,7 @@ int main() {
     glUniform1i(glGetUniformLocation(shader_program, "texture2"), 1);
 
     GLuint blend_variable = glGetUniformLocation(shader_program, "blend");
-    glUniform1f(blend_variable, 0.2);
+    glUniform1f(blend_variable, 0.3);
 
     vec3 cubePositions[] = {
         {0.0f,  0.0f,  0.0f}, 
@@ -440,8 +450,6 @@ int main() {
 
         glm_translate(view_mat, camera->pos);
         glm_perspective(glm_rad(fov), (double)window_width/(double)window_height, 0.1, 100, projection_mat);
-
-        printf("%d, %d\n", window_width, window_height);
 
         vec3 camera_right, camera_up;
         camera_get_up_and_right(camera, &camera_right, &camera_up);

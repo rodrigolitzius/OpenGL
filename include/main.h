@@ -13,6 +13,8 @@
 
 #define WORLD_UP (vec3){0.0f, 1.0f, 0.0f}
 #define MOV_SPEED 0.13
+
+#define INITIAL_FOV 90
 #define CAMERA_SENSITIVITY 0.005
 
 /////////////////////
