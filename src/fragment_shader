@@ -13,7 +13,7 @@ uniform bool use_texture;
 
 void main() {
     if (use_texture)
-        FragColor = mix(texture(texture1, frag_shader_tex_coord), texture(texture2, frag_shader_tex_coord), blend);
+        FragColor = mix(texture(texture1, frag_shader_tex_coord), texture(texture2, frag_shader_tex_coord), blend) * frag_shader_color;
     else 
         FragColor = frag_shader_color;
 }

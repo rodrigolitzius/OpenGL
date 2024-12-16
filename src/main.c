@@ -8,13 +8,14 @@
 
 #include <glad.h>
 #include <GLFW/glfw3.h>
+#include <cglm/cglm.h>
 
 #include "functions.h"
 #include "texture.h"
+#include "camera.h"
+#include "test.h"
 
 #include <main.h>
-
-void key_event_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 
 bool draw_wireframe = false;
 
@@ -22,9 +23,92 @@ struct VaoData** vaos;
 unsigned int vao_count = 0;
 unsigned int current_vao = 0;
 
+double mouse_last_x = WINDOW_WIDTH/2.0f;
+double mouse_last_y = WINDOW_HEIGHT/2.0f;
+
+struct camera* camera;
+double fov = 90;
+
 // Should run when the size of the window is changed
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     glViewport(0, 0, width, height);
+}
+
+void scroll_callback(GLFWwindow* window, double x_offset, double y_offset) {
+    printf("%f\n", fov);
+    fov += y_offset;
+}
+
+void mouse_callback(GLFWwindow* window, double x_pos, double y_pos) {
+    double mouse_rel_x_displacement = mouse_last_x - x_pos;
+    double mouse_rel_y_displacement = mouse_last_y - y_pos;
+
+    mouse_last_x = x_pos;
+    mouse_last_y = y_pos;
+
+    camera->yaw += (CAMERA_SENSITIVITY * mouse_rel_x_displacement);
+    camera->pitch += (CAMERA_SENSITIVITY * mouse_rel_y_displacement);
+}
+
+// Runs at every key press
+void key_event_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    // Switch wireframe mode
+    if (key == GLFW_KEY_C && action == GLFW_PRESS) {
+        draw_wireframe = !draw_wireframe;
+
+        if (draw_wireframe == true) {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        } else {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        }
+    }
+
+    // Change VAO
+    if (key == GLFW_KEY_V && action == GLFW_PRESS) {
+        if (current_vao == vao_count-1) {
+            current_vao = 0;
+        } else {
+            current_vao += 1;
+        }
+
+        printf("Switched to VAO \"%s\"\n", vaos[current_vao]->name);
+    }
+}
+
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
+    if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    }
+}
+
+void handle_input(GLFWwindow* window) {
+    vec3 direction = {0.0f, 0.0f, 0.0f};
+
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+        direction[FORWARD] = MOV_SPEED;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+        direction[FORWARD] = -MOV_SPEED;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+        direction[RIGHT] = -MOV_SPEED;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+        direction[RIGHT] = MOV_SPEED;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
+        direction[UP] = -MOV_SPEED;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
+        direction[UP] = MOV_SPEED;
+    }
+
+    camera_move(camera, direction);
 }
 
 // Stuff to do only once at the start of the program
@@ -53,6 +137,9 @@ void initialize(GLFWwindow** window) {
     // Set OpenGL viewport when the window is resized
     glfwSetFramebufferSizeCallback(*window, framebuffer_size_callback);
     glfwSetKeyCallback(*window, key_event_callback);
+    glfwSetScrollCallback(*window, scroll_callback);
+    glfwSetCursorPosCallback(*window, mouse_callback);
+    glfwSetMouseButtonCallback(*window, mouse_button_callback);
 
     // Intiializing GLAD
     return_value = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
@@ -63,35 +150,7 @@ void initialize(GLFWwindow** window) {
 
     // OpenGL stuff
     glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
-}
-
-void handle_input(GLFWwindow* window) {
-    // Does nothing for now
-}
-
-// Runs at every key press
-void key_event_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    // Switch wireframe mode
-    if (key == GLFW_KEY_W && action == GLFW_PRESS) {
-        draw_wireframe = !draw_wireframe;
-
-        if (draw_wireframe == true) {
-            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-        } else {
-            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-        }
-    }
-
-    // Change VAO
-    if (key == GLFW_KEY_V && action == GLFW_PRESS) {
-        if (current_vao == vao_count-1) {
-            current_vao = 0;
-        } else {
-            current_vao += 1;
-        }
-
-        printf("Switched to VAO \"%s\"\n", vaos[current_vao]->name);
-    }
+    glEnable(GL_DEPTH_TEST);
 }
 
 // Links shaders to a shader program
@@ -126,6 +185,10 @@ GLuint link_shaders() {
         exit_with_error_generic("Failed to link shaders.", linking_log);
     }
 
+    // Freeing the shader sources
+    free((void*)fragment_shader_src);
+    free((void*)vertex_shader_src);
+
     return shader_program;
 }
 
@@ -134,22 +197,52 @@ void add_vao(struct VaoData* vao) {
     vaos = realloc(vaos, (vao_count+1)*sizeof(struct VaoData));
     vao_count += 1;
 
-    printf("Created VAO with address: %p\n", vao);
-
     vaos[vao_count-1] = vao;
 }
 
 void vertex_spec() {
-    // Defining each vertex
     double vertices1[] = {
-        // Vertices         // Colors   // Texture coords
-        -0.5f, 0.5,   0.0,   1, 0, 0,   0, 3, // Top left
-        0.5f,  0.5f,  0.0f,  0, 1, 0,   3, 3, // Top right
-        -0.5f, -0.5f, 0.0f,  0, 0, 1,   0, 0, // Bottom left
+        -0.5f, -0.5f, -0.5f,  0, 1, 0,  0.0f, 0.0f,
+        0.5f, -0.5f, -0.5f,  0, 0, 1,  1.0f, 0.0f,
+        0.5f,  0.5f, -0.5f,  1, 0, 0,  1.0f, 1.0f,
+        0.5f,  0.5f, -0.5f,   1, 0, 0,  1.0f, 1.0f,
+        -0.5f,  0.5f, -0.5f,  1, 1, 0,  0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0, 1, 0,  0.0f, 0.0f,
 
-        0.5f,  -0.5,  0.0,   1, 1, 0,   3, 0, // Bottom right
-        0.5f,  0.5f,  0.0f,  0, 1, 0,   3, 3, // Top right
-        -0.5f, -0.5f, 0.0f,  0, 0, 1,   0, 0, // Bottom left
+        -0.5f, -0.5f,  0.5f,  0, 1, 0,  0.0f, 0.0f,
+        0.5f, -0.5f,  0.5f,  0, 0, 1,  1.0f, 0.0f,
+        0.5f,  0.5f,  0.5f,  1, 0, 0,1.0f, 1.0f,
+        0.5f,  0.5f,  0.5f,   1, 0, 0,  1.0f, 1.0f,
+        -0.5f,  0.5f,  0.5f,  1, 1, 0,  0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0, 1, 0,  0.0f, 0.0f,
+
+        -0.5f,  0.5f,  0.5f,  0, 1, 0,  1.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f,  0, 0, 1,  1.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  1, 0, 0,  0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  1, 0, 0,  0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  1, 1, 0,  0.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,  0, 1, 0,  1.0f, 0.0f,
+
+        0.5f,  0.5f,  0.5f,  0, 1, 0,  1.0f, 0.0f,
+        0.5f,  0.5f, -0.5f,  0, 0, 1,  1.0f, 1.0f,
+        0.5f, -0.5f, -0.5f,  1, 0, 0,  0.0f, 1.0f,
+        0.5f, -0.5f, -0.5f,   1, 0, 0,  0.0f, 1.0f,
+        0.5f, -0.5f,  0.5f,  1, 1, 0,  0.0f, 0.0f,
+        0.5f,  0.5f,  0.5f,  0, 1, 0,  1.0f, 0.0f,
+
+        -0.5f, -0.5f, -0.5f,  0, 1, 0,  0.0f, 1.0f,
+        0.5f, -0.5f, -0.5f,  0, 0, 1,  1.0f, 1.0f,
+        0.5f, -0.5f,  0.5f,  1, 0, 0,  1.0f, 0.0f,
+        0.5f, -0.5f,  0.5f,   1, 0, 0,  1.0f, 0.0f,
+        -0.5f, -0.5f,  0.5f,  1, 1, 0,  0.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f,  0, 1, 0,  0.0f, 1.0f,
+
+        -0.5f,  0.5f, -0.5f,  0, 1, 0,  0.0f, 1.0f,
+        0.5f,  0.5f, -0.5f,  0, 0, 1,  1.0f, 1.0f,
+        0.5f,  0.5f,  0.5f,  1, 0, 0,  1.0f, 0.0f,
+        0.5f,  0.5f,  0.5f,  1, 0, 0,  1.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,  1, 1, 0,  0.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f,  0, 1, 0,  0.0f, 1.0f
     };
 
     GLuint vertex_count1 = ((sizeof(vertices1) / sizeof(double)) / 8);
@@ -179,7 +272,7 @@ void vertex_spec() {
     glBindVertexArray(0);
 
     struct VaoData temp1 = {
-        vao1, vertex_count1, "Rectangle with texture", true
+        vao1, vertex_count1, "Main", true
     };
 
     struct VaoData *vao_1 = malloc(sizeof(struct VaoData));
@@ -285,15 +378,18 @@ int main() {
 
     initialize(&window);
 
+    GLint window_width;
+    GLint window_height;
+
+    glfwGetFramebufferSize(window, &window_width, &window_height);
+
+    // test();
+
     // Build, compile and link the shaders
     GLuint shader_program = link_shaders();
 
     // Creating all the VAOs
     vertex_spec();
-
-    for (int i=0; i <  vao_count; i++) {
-        printf("VAO %d -> Name: %s, ID: %u, Vertex count: %u\n", i, vaos[i]->name, vaos[i]->vao, vaos[i]->vertex_count);
-    }
 
     struct TextureWrap texture1_wrap = {
         GL_REPEAT, GL_REPEAT,
@@ -316,10 +412,47 @@ int main() {
     glUniform1i(glGetUniformLocation(shader_program, "texture2"), 1);
 
     GLuint blend_variable = glGetUniformLocation(shader_program, "blend");
-    glUniform1f(blend_variable, 0);
+    glUniform1f(blend_variable, 0.2);
+
+    vec3 cubePositions[] = {
+        {0.0f,  0.0f,  0.0f}, 
+        {2.0f,  5.0f, -15.0f}, 
+        {-1.5f, -2.2f, -2.5f},
+        {-3.8f, -2.0f, -12.3f},
+        {2.4f, -0.4f, -3.5f},
+        {-1.7f,  3.0f, -7.5f},
+        {1.3f, -2.0f, -2.5f},
+        {1.5f,  2.0f, -2.5f},
+        {1.5f,  0.2f, -1.5f},
+        {-1.3f,  1.0f, -1.5f},
+    };
+
+    camera = camera_create();
+    camera_move(camera, (vec3){0.0f, 0.0f, 3.0f});
 
     // Main loop
     while (!glfwWindowShouldClose(window)) {
+        mat4 model_mat, view_mat, projection_mat;
+        glm_mat4_identity(model_mat);
+        glm_mat4_identity(view_mat);
+        glm_mat4_identity(projection_mat);
+
+        glm_translate(view_mat, camera->pos);
+        glm_perspective(glm_rad(fov), (double)window_width/(double)window_height, 0.1, 100, projection_mat);
+
+        vec3 camera_right, camera_up;
+        camera_get_up_and_right(camera, &camera_right, &camera_up);
+
+        camera_update_direction(camera);
+
+        vec3 look_at;
+        glm_vec3_add(camera->pos, camera->direction, look_at);
+        glm_lookat(camera->pos, look_at, camera_up, view_mat);
+
+        glUniformMatrix4fv(glad_glGetUniformLocation(shader_program, "model"), 1, GL_FALSE, *model_mat);
+        glUniformMatrix4fv(glad_glGetUniformLocation(shader_program, "view"), 1, GL_FALSE, *view_mat);
+        glUniformMatrix4fv(glad_glGetUniformLocation(shader_program, "projection"), 1, GL_FALSE, *projection_mat);
+
         // Selecting the right VAO to draw
         vao = *vaos[current_vao];
 
@@ -332,7 +465,7 @@ int main() {
 
         // Clearing the screen
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // Drawing with VAO
         glUseProgram(shader_program);
@@ -345,12 +478,22 @@ int main() {
 
         glBindVertexArray(vao.vao);
 
-        ///////////////////
-
-        ///////////////////
-
         // Finally drawing the vertices
-        glDrawArrays(GL_TRIANGLES, 0, vao.vertex_count);
+        for (int i=0; i<9; i++) {
+            double rotation_speed = i + 0.5;
+            if ((i % 2) == 0) {
+                rotation_speed *= -1;
+            }
+
+            rotation_speed /= 2;
+
+            glm_mat4_identity(model_mat);
+            glm_translate(model_mat, cubePositions[i]);
+            glm_rotate(model_mat, glfwGetTime()*rotation_speed, (vec3){1.0f, 0.5f, 0.0f});
+            glUniformMatrix4fv(glad_glGetUniformLocation(shader_program, "model"), 1, GL_FALSE, *model_mat);
+
+            glDrawArrays(GL_TRIANGLES, 0, vao.vertex_count);
+        }
 
         // Updating window
         glfwSwapBuffers(window);
@@ -358,7 +501,6 @@ int main() {
     }
 
     for (int i=0; i < vao_count; i++) {
-        printf("freed address: %p\n", vaos[i]);
         free(vaos[i]);
     }
 

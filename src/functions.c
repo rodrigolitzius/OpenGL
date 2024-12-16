@@ -40,11 +40,6 @@ void* file_read_all(const char* file_path) {
     return contents;
 }
 
-void to_range(double max_x, double max_y, double* x, double* y) {
-    *x = (*x - (max_x/2.0f)) / (max_x/2.0f);
-    *y = -(*y - (max_y/2.0f)) / (max_y/2.0f);
-}
-
 GLuint compile_shader(const GLchar* source, GLenum type) {
     // Creating the shader object
     GLuint shader;
