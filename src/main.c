@@ -17,6 +17,7 @@
 #include <main.h>
 
 bool draw_wireframe = false;
+bool enable_3d = false;
 
 struct VaoData** vaos;
 unsigned int vao_count = 0;
@@ -31,9 +32,8 @@ double mouse_last_y = WINDOW_HEIGHT/2.0f;
 struct camera* camera;
 double fov = INITIAL_FOV;
 
-// Should run when the size of the window is changed
+// Runs when the size of the window is changed
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
-    glViewport(0, 0, width, height);
     window_width = width;
     window_height = height;
 }
@@ -82,6 +82,10 @@ void key_event_callback(GLFWwindow* window, int key, int scancode, int action, i
         }
 
         printf("Switched to VAO \"%s\"\n", vaos[current_vao]->name);
+    }
+
+    if (key == GLFW_KEY_3 && action == GLFW_PRESS) {
+        enable_3d = !enable_3d;
     }
 }
 
@@ -443,23 +447,23 @@ int main() {
 
     // Main loop
     while (!glfwWindowShouldClose(window)) {
+        // Declaring transformation matrices
         mat4 model_mat, view_mat, projection_mat;
         glm_mat4_identity(model_mat);
         glm_mat4_identity(view_mat);
         glm_mat4_identity(projection_mat);
 
-        glm_translate(view_mat, camera->pos);
-        glm_perspective(glm_rad(fov), (double)window_width/(double)window_height, 0.1, 100, projection_mat);
+        if (enable_3d) {
+            glm_perspective(glm_rad(fov), (window_width/2.0f)/(double)window_height, 0.01, 100, projection_mat);
+        } else {
+            glm_perspective(glm_rad(fov), (double)window_width/(double)window_height, 0.01, 100, projection_mat);
+        }
 
-        vec3 camera_right, camera_up;
-        camera_get_up_and_right(camera, &camera_right, &camera_up);
-
+        // View matrix is defined by the camera
         camera_update_direction(camera);
+        camera_get_view_matrix(camera, &view_mat);
 
-        vec3 look_at;
-        glm_vec3_add(camera->pos, camera->direction, look_at);
-        glm_lookat(camera->pos, look_at, camera_up, view_mat);
-
+        // Passing matrices to the vertex shader
         glUniformMatrix4fv(glad_glGetUniformLocation(shader_program, "model"), 1, GL_FALSE, *model_mat);
         glUniformMatrix4fv(glad_glGetUniformLocation(shader_program, "view"), 1, GL_FALSE, *view_mat);
         glUniformMatrix4fv(glad_glGetUniformLocation(shader_program, "projection"), 1, GL_FALSE, *projection_mat);
@@ -503,7 +507,30 @@ int main() {
             glm_rotate(model_mat, glfwGetTime()*rotation_speed, (vec3){1.0f, 0.5f, 0.0f});
             glUniformMatrix4fv(glad_glGetUniformLocation(shader_program, "model"), 1, GL_FALSE, *model_mat);
 
-            glDrawArrays(GL_TRIANGLES, 0, vao.vertex_count);
+            if (enable_3d) {
+                // Basically this moves the camera left and right and recalculates its projection matrix
+                // to get a different image on each side of the screen, resulting in the 3D effect
+                
+                // Left half of the window
+                glViewport(0, 0, window_width/2, window_height);
+                camera_move(camera, (vec3){0.0f, D3_EYE_DISTANCE, 0.0f});
+                camera_get_view_matrix(camera, &view_mat);
+                glUniformMatrix4fv(glad_glGetUniformLocation(shader_program, "view"), 1, GL_FALSE, *view_mat);
+                glDrawArrays(GL_TRIANGLES, 0, vao.vertex_count);
+                camera_move(camera, (vec3){0.0f, -D3_EYE_DISTANCE, 0.0f});
+
+                // Right half of the window
+                glViewport(window_width/2, 0, window_width/2, window_height);
+                camera_move(camera, (vec3){0.0f, -D3_EYE_DISTANCE, 0.0f});
+                camera_get_view_matrix(camera, &view_mat);
+                glUniformMatrix4fv(glad_glGetUniformLocation(shader_program, "view"), 1, GL_FALSE, *view_mat);
+                glDrawArrays(GL_TRIANGLES, 0, vao.vertex_count);
+                camera_move(camera, (vec3){0.0f, D3_EYE_DISTANCE, 0.0f});
+            } else {
+                // Full window
+                glViewport(0, 0, window_width, window_height);
+                glDrawArrays(GL_TRIANGLES, 0, vao.vertex_count);
+            }
         }
 
         // Updating window

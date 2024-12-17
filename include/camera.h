@@ -19,4 +19,7 @@ void camera_update_direction(struct camera* camera);
 // Calculates a normalized vection that points to the camera right and up direction relative to its direction
 void camera_get_up_and_right(struct camera* camera, vec3* right, vec3* up);
 
+// Returns the view_matrix for the camera
+void camera_get_view_matrix(struct camera* camera, mat4* matrix);
+
 #endif
