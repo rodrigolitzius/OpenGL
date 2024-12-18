@@ -6,6 +6,8 @@
 #include "main.h"
 #include "camera.h"
 
+#include <GLFW/glfw3.h>
+
 struct camera* camera_create() {
     struct camera* camera = malloc(sizeof(struct camera));
 
@@ -22,20 +24,43 @@ struct camera* camera_create() {
 }
 
 void camera_move(struct camera* camera, vec3 direction) {
-    vec3 right, up;
-    camera_get_up_and_right(camera, &right, &up);
+    vec3 final_movement = {0.0f, 0.0f, 0.0f};
 
     // Forward and backwards movement
-    camera->pos[POS_X] += direction[FORWARD] * cos(camera->yaw) * cos(camera->pitch);
-    camera->pos[POS_Y] += direction[FORWARD] * -sin(camera->pitch);
-    camera->pos[POS_Z] += direction[FORWARD] * sin(camera->yaw) * cos(camera->pitch);
+    final_movement[POS_X] += direction[FORWARD] * cos(camera->yaw) * cos(camera->pitch);
+    final_movement[POS_Y] += direction[FORWARD] * -sin(camera->pitch);
+    final_movement[POS_Z] += direction[FORWARD] * sin(camera->yaw) * cos(camera->pitch);
 
     // Left and right movement
-    camera->pos[POS_X] += direction[RIGHT] * cos(PI/2 - camera->yaw);
-    camera->pos[POS_Z] -= direction[RIGHT] * sin(PI/2 - camera->yaw);
+    final_movement[POS_X] += direction[RIGHT] * cos(PI/2 - camera->yaw);
+    final_movement[POS_Z] -= direction[RIGHT] * sin(PI/2 - camera->yaw);
 
     // Up and down movement
-    camera->pos[POS_Y] += direction[UP] * 1;
+    final_movement[POS_Y] += direction[UP] * 1;
+
+    // Normalize the vector so that speeds don't add up
+    // e.g. when you point up and go forward and up at the same time
+    glm_normalize(final_movement);
+    glm_vec3_scale(final_movement, MOV_SPEED, final_movement);
+    glm_vec3_add(camera->pos, final_movement, camera->pos);
+}
+
+void camera_shift(struct camera* camera, vec3 direction) {
+    vec3 final_movement = {0.0f, 0.0f, 0.0f};
+
+    // Forward and backwards movement
+    final_movement[POS_X] += direction[FORWARD] * cos(camera->yaw) * cos(camera->pitch);
+    final_movement[POS_Y] += direction[FORWARD] * -sin(camera->pitch);
+    final_movement[POS_Z] += direction[FORWARD] * sin(camera->yaw) * cos(camera->pitch);
+
+    // Left and right movement
+    final_movement[POS_X] += direction[RIGHT] * cos(PI/2 - camera->yaw);
+    final_movement[POS_Z] -= direction[RIGHT] * sin(PI/2 - camera->yaw);
+
+    // Up and down movement
+    final_movement[POS_Y] += direction[UP] * 1;
+
+    glm_vec3_add(camera->pos, final_movement, camera->pos);
 }
 
 void camera_get_view_matrix(struct camera* camera, mat4* matrix) {

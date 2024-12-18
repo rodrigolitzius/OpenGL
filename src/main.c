@@ -105,27 +105,27 @@ void handle_input(GLFWwindow* window) {
     vec3 direction = {0.0f, 0.0f, 0.0f};
 
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-        direction[FORWARD] = MOV_SPEED;
+        direction[FORWARD] += 1;
     }
 
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-        direction[FORWARD] = -MOV_SPEED;
+        direction[FORWARD] += -1;
     }
 
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-        direction[RIGHT] = -MOV_SPEED;
+        direction[RIGHT] += -1;
     }
 
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-        direction[RIGHT] = MOV_SPEED;
+        direction[RIGHT] += 1;
     }
 
     if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
-        direction[UP] = -MOV_SPEED;
+        direction[UP] += -1;
     }
 
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
-        direction[UP] = MOV_SPEED;
+        direction[UP] += 1;
     }
 
     camera_move(camera, direction);
@@ -267,7 +267,7 @@ int main() {
     };
 
     camera = camera_create();
-    camera_move(camera, (vec3){0.0f, 0.0f, 3.0f});
+    camera_shift(camera, (vec3){0.0f, 0.0f, 3.0f});
 
     // Main loop
     while (!glfwWindowShouldClose(window)) {
@@ -337,19 +337,19 @@ int main() {
                 
                 // Left half of the window
                 glViewport(0, 0, window_width/2, window_height);
-                camera_move(camera, (vec3){0.0f, D3_EYE_DISTANCE, 0.0f});
+                camera_shift(camera, (vec3){0.0f, D3_EYE_DISTANCE, 0.0f});
                 camera_get_view_matrix(camera, &view_mat);
                 glUniformMatrix4fv(glad_glGetUniformLocation(shader_program, "view"), 1, GL_FALSE, *view_mat);
                 glDrawArrays(GL_TRIANGLES, 0, vao.vertex_count);
-                camera_move(camera, (vec3){0.0f, -D3_EYE_DISTANCE, 0.0f});
+                camera_shift(camera, (vec3){0.0f, -D3_EYE_DISTANCE, 0.0f});
 
                 // Right half of the window
                 glViewport(window_width/2, 0, window_width/2, window_height);
-                camera_move(camera, (vec3){0.0f, -D3_EYE_DISTANCE, 0.0f});
+                camera_shift(camera, (vec3){0.0f, -D3_EYE_DISTANCE, 0.0f});
                 camera_get_view_matrix(camera, &view_mat);
                 glUniformMatrix4fv(glad_glGetUniformLocation(shader_program, "view"), 1, GL_FALSE, *view_mat);
                 glDrawArrays(GL_TRIANGLES, 0, vao.vertex_count);
-                camera_move(camera, (vec3){0.0f, D3_EYE_DISTANCE, 0.0f});
+                camera_shift(camera, (vec3){0.0f, D3_EYE_DISTANCE, 0.0f});
             } else {
                 // Full window
                 glViewport(0, 0, window_width, window_height);
