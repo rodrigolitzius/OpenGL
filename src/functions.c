@@ -39,26 +39,3 @@ void* file_read_all(const char* file_path) {
 
     return contents;
 }
-
-GLuint compile_shader(const GLchar* source, GLenum type) {
-    // Creating the shader object
-    GLuint shader;
-    shader = glCreateShader(type);
-
-    // COmpiling from the source code
-    glShaderSource(shader, 1, &source, NULL);
-    glCompileShader(shader);
-
-    // Checking for erros in the compilation
-    GLint shader_compiled = GL_TRUE;
-    char compiling_log[8192];
-
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &shader_compiled);
-
-    if (shader_compiled == GL_FALSE) {
-        glGetShaderInfoLog(shader, 8192, NULL, compiling_log);
-        exit_with_error_generic("Failed to compile shader", compiling_log);
-    }
-
-    return shader;
-}

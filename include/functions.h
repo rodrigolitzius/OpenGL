@@ -12,7 +12,4 @@ void exit_with_error_generic(const char* error_text, const char* error_descripti
 // Reads all contents of a file
 void* file_read_all(const char* file_path);
 
-// Compile a GLSL shader
-GLuint compile_shader(const GLchar* source, GLenum type);
-
 #endif

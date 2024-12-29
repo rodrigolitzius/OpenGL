@@ -15,6 +15,7 @@
 #include "camera.h"
 #include "dynamic_array.h"
 #include "vertex_spec.h"
+#include "shader.h"
 
 #include <main.h>
 
@@ -175,45 +176,6 @@ void initialize(GLFWwindow** window) {
     vaos = dynarray_create(sizeof(struct VaoData));
 }
 
-// Links shaders to a shader program
-GLuint link_shaders() {
-    // Getting the source for each shader and compiling them
-    const char* vertex_shader_src = file_read_all("./src/vertex_shader");
-    GLuint vertex_shader = compile_shader(vertex_shader_src, GL_VERTEX_SHADER);
-
-    const char* fragment_shader_src = file_read_all("./src/fragment_shader");
-    GLuint fragment_shader = compile_shader(fragment_shader_src, GL_FRAGMENT_SHADER);
-
-    // Linking the shaders
-    GLuint shader_program;
-    shader_program = glCreateProgram();
-
-    glAttachShader(shader_program, vertex_shader);
-    glAttachShader(shader_program, fragment_shader);
-
-    glLinkProgram(shader_program);
-
-    // Deleting the shaders since we don't need them anymore
-    glDeleteShader(vertex_shader);
-    glDeleteShader(fragment_shader);
-
-    // Checking for errors in the linking process
-    int linked_successfully = GL_TRUE;
-    char linking_log[8192];
-    glGetProgramiv(shader_program, GL_LINK_STATUS, &linked_successfully);
-
-    if (linked_successfully == GL_FALSE) {
-        glGetProgramInfoLog(shader_program, 8192, NULL, linking_log);
-        exit_with_error_generic("Failed to link shaders.", linking_log);
-    }
-
-    // Freeing the shader sources
-    free((void*)fragment_shader_src);
-    free((void*)vertex_shader_src);
-
-    return shader_program;
-}
-
 int main() {
     // Initializing
     GLFWwindow* window;
@@ -224,8 +186,15 @@ int main() {
 
     // test();
 
+    struct Shader shaders_data[] = {
+        (struct Shader){"./shaders/vertex_shader", GL_VERTEX_SHADER},
+        (struct Shader){"./shaders/fragment_shader", GL_FRAGMENT_SHADER},
+    };
+
+    int shader_data_count = sizeof(shaders_data)/sizeof(struct Shader);
+
     // Build, compile and link the shaders
-    GLuint shader_program = link_shaders();
+    GLuint shader_program = link_shaders(shaders_data, shader_data_count);
 
     // Creating all the VAOs
     vertex_spec(vaos);
