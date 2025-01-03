@@ -9,5 +9,6 @@ struct DynamicArray {
 
 struct DynamicArray* dynarray_create(size_t sizeof_datatype);
 void dynarray_add(struct DynamicArray* array, void* data);
+void dynarray_free(struct DynamicArray* array);
 
 #endif

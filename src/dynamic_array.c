@@ -21,3 +21,15 @@ void dynarray_add(struct DynamicArray* array, void* data) {
     memcpy(array->data[array->length], data, array->sizeof_datatype);
     array->length += 1;
 }
+
+void dynarray_free(struct DynamicArray* array) {
+    for (int i=0; i<array->length; i++) {
+        free(array->data[i]);
+    }
+
+    if (array->length != 0) {
+        free(array->data);
+    }
+    
+    free(array);
+}

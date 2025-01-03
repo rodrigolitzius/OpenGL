@@ -331,9 +331,7 @@ int main() {
         glfwPollEvents();
     }
 
-    for (int i=0; i < vaos->length; i++) {
-        free(vaos->data[i]);
-    }
+    dynarray_free(vaos);
 
     glfwTerminate();
 
