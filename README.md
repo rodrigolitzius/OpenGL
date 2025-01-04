@@ -42,5 +42,4 @@ This project has a "fake 3D" mode that allows you to perceive depth from 2D imag
 | Right Click | Grab/release cursor|
 | Mouse Wheel | Change FOV |
 | C | Enable wireframe mode |
-| V | Change VAO |
 | 3 | Enable cross-eye 3D mode |
