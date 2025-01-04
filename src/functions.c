@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include "functions.h"
+#include "main.h"
 
 #include <GLFW/glfw3.h>
 
@@ -38,4 +39,14 @@ void* file_read_all(const char* file_path) {
     fclose(file);
 
     return contents;
+}
+
+struct MVP create_mvp() {
+    struct MVP mvp;
+
+    glm_mat4_identity(mvp.model);
+    glm_mat4_identity(mvp.view);
+    glm_mat4_identity(mvp.projection);
+
+    return mvp;
 }

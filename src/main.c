@@ -164,19 +164,32 @@ void initialize(GLFWwindow** window) {
     vaos = dynarray_create(sizeof(struct VaoData));
 }
 
-void render_full(mat4 model, mat4 view, mat4 projection, GLuint shader_program1, GLuint shader_program2) {
+void render_full(struct MVP mvp_original, GLuint shader_program1, GLuint shader_program2) {
+    mat4 model, view, projection;
+
+    glm_mat4_copy(mvp_original.model, model);
+    glm_mat4_copy(mvp_original.view, view);
+    glm_mat4_copy(mvp_original.projection, projection);
+
     struct VaoData cube_vao = *(struct VaoData*)(vaos->data[0]);
     struct VaoData light_cube_vao = *(struct VaoData*)(vaos->data[1]);
 
-    vec4 light_color = {1.0f, 1.0f, 1.0f, 1.0f};
-    vec4 object_color = {1.0f, 0.5f, 0.31f};
+    vec3 light_color = {1.0f, 1.0f, 1.0f};
+    vec3 light_position = {5.0f, -2.0f, 4.0f};
+    vec3 object_color = {1.0f, 0.5f, 0.31f};
+
+    glm_vec3_rotate(light_position, glfwGetTime()/1.2f, (vec3){0.0f, 1.0f, 0.0f});
 
     ///////// Cube /////////
+    glm_scale(model, (vec3){3.0f, 3.0f, 3.0f});
+
     glBindVertexArray(cube_vao.vao);
     glUseProgram(shader_program1);
 
-    glUniform4fv(glad_glGetUniformLocation(shader_program1, "light_color"), 1, light_color);
-    glUniform4fv(glad_glGetUniformLocation(shader_program1, "object_color"), 1, object_color);
+    glUniform3fv(glad_glGetUniformLocation(shader_program1, "light_color"), 1, light_color);
+    glUniform3fv(glad_glGetUniformLocation(shader_program1, "light_pos"), 1, light_position);
+    glUniform3fv(glad_glGetUniformLocation(shader_program1, "object_color"), 1, object_color);
+    glUniform3fv(glad_glGetUniformLocation(shader_program1, "view_position"), 1, camera->pos);
 
     glUniformMatrix4fv(glad_glGetUniformLocation(shader_program1, "model"), 1, GL_FALSE, *model);
     glUniformMatrix4fv(glad_glGetUniformLocation(shader_program1, "view"), 1, GL_FALSE, *view);
@@ -185,18 +198,19 @@ void render_full(mat4 model, mat4 view, mat4 projection, GLuint shader_program1,
     glDrawArrays(GL_TRIANGLES, 0, cube_vao.vertex_count);
 
     ///////// Light source /////////
+    glm_mat4_copy(mvp_original.model, model);
+
     glBindVertexArray(light_cube_vao.vao);
     glUseProgram(shader_program2);
 
-    glm_translate(model, (vec3){10.0f, -2.0f, 0.0f});
+    glm_translate(model, light_position);
+    glm_scale(model, (vec3){0.5f, 0.5f, 0.5f});
 
-    glUniform4fv(glad_glGetUniformLocation(shader_program2, "light_color"), 1, light_color);
+    glUniform3fv(glad_glGetUniformLocation(shader_program2, "light_color"), 1, light_color);
 
     glUniformMatrix4fv(glad_glGetUniformLocation(shader_program2, "model"), 1, GL_FALSE, *model);
     glUniformMatrix4fv(glad_glGetUniformLocation(shader_program2, "view"), 1, GL_FALSE, *view);
     glUniformMatrix4fv(glad_glGetUniformLocation(shader_program2, "projection"), 1, GL_FALSE, *projection);
-
-    glm_translate(model, (vec3){-2.0f, 2.0f, 0.0f});
 
     glDrawArrays(GL_TRIANGLES, 0, light_cube_vao.vertex_count);
 }
@@ -235,20 +249,17 @@ int main() {
     // Main loop
     while (!glfwWindowShouldClose(window)) {
         // Declaring transformation matrices
-        mat4 model_mat, view_mat, projection_mat;
-        glm_mat4_identity(model_mat);
-        glm_mat4_identity(view_mat);
-        glm_mat4_identity(projection_mat);
+        struct MVP mvp = create_mvp();
 
         if (enable_3d) {
-            glm_perspective(glm_rad(fov), (window_width/2.0f)/(double)window_height, 0.01, 100, projection_mat);
+            glm_perspective(glm_rad(fov), (window_width/2.0f)/(double)window_height, 0.01, 100, mvp.projection);
         } else {
-            glm_perspective(glm_rad(fov), (double)window_width/(double)window_height, 0.01, 100, projection_mat);
+            glm_perspective(glm_rad(fov), (double)window_width/(double)window_height, 0.01, 100, mvp.projection);
         }
 
         // View matrix is defined by the camera
         camera_update_direction(camera);
-        camera_get_view_matrix(camera, &view_mat);
+        camera_get_view_matrix(camera, &mvp.view);
 
         // Input
         handle_input(window);
@@ -261,20 +272,20 @@ int main() {
             // Left half of the window
             glViewport(0, 0, window_width/2, window_height);
             camera_shift(camera, (vec3){0.0f, D3_EYE_DISTANCE, 0.0f});
-            camera_get_view_matrix(camera, &view_mat);
-            render_full(model_mat, view_mat, projection_mat, cube_shader_program, light_cube_shader_program);
+            camera_get_view_matrix(camera, &mvp.view);
+            render_full(mvp, cube_shader_program, light_cube_shader_program);
             camera_shift(camera, (vec3){0.0f, -D3_EYE_DISTANCE, 0.0f});
 
             // Right half of the window
             glViewport(window_width/2, 0, window_width/2, window_height);
             camera_shift(camera, (vec3){0.0f, -D3_EYE_DISTANCE, 0.0f});
-            camera_get_view_matrix(camera, &view_mat);
-            render_full(model_mat, view_mat, projection_mat, cube_shader_program, light_cube_shader_program);
+            camera_get_view_matrix(camera, &mvp.view);
+            render_full(mvp, cube_shader_program, light_cube_shader_program);
             camera_shift(camera, (vec3){0.0f, D3_EYE_DISTANCE, 0.0f});
         } else {
             // Full window
             glViewport(0, 0, window_width, window_height);
-            render_full(model_mat, view_mat, projection_mat, cube_shader_program, light_cube_shader_program);
+            render_full(mvp, cube_shader_program, light_cube_shader_program);
         }
 
         // Updating window

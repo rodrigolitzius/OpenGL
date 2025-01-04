@@ -3,6 +3,7 @@
 
 #include <glad.h>
 #include <stdbool.h>
+#include <cglm/cglm.h>
 
 ///////// GLFW /////////
 #define WINDOW_WIDTH 700
@@ -13,7 +14,7 @@
 #define OPGL_MINOR_VER 3
 
 ///////// CAMERA /////////
-#define MOV_SPEED 0.13f
+#define MOV_SPEED 0.05f
 #define INITIAL_FOV 90
 #define CAMERA_SENSITIVITY 0.005f
 
@@ -38,6 +39,10 @@
 
 struct VaoData {
     GLuint vao; unsigned int vertex_count; char name[128]; bool has_texture;
+};
+
+struct MVP {
+    mat4 model, view, projection;
 };
 
 #endif
