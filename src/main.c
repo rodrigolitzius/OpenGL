@@ -11,7 +11,6 @@
 #include <cglm/cglm.h>
 
 #include "functions.h"
-#include "texture.h"
 #include "camera.h"
 #include "dynamic_array.h"
 #include "vertex_spec.h"
@@ -23,8 +22,6 @@ bool draw_wireframe = false;
 bool enable_3d = false;
 
 struct DynamicArray* vaos;
-unsigned int vao_count = 0;
-unsigned int current_vao = 0;
 
 int window_width;
 int window_height;
@@ -74,17 +71,6 @@ void key_event_callback(GLFWwindow* window, int key, int scancode, int action, i
         } else {
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         }
-    }
-
-    // Change VAO
-    if (key == GLFW_KEY_V && action == GLFW_PRESS) {
-        if (current_vao >= vaos->length-1) {
-            current_vao = 0;
-        } else {
-            current_vao += 1;
-        }
-
-        printf("Switched to VAO \"%s\"\n", ((struct VaoData*)vaos->data[current_vao])->name);
     }
 
     if (key == GLFW_KEY_3 && action == GLFW_PRESS) {
@@ -162,6 +148,8 @@ void initialize(GLFWwindow** window) {
     glfwSetCursorPosCallback(*window, mouse_callback);
     glfwSetMouseButtonCallback(*window, mouse_button_callback);
 
+    glfwGetFramebufferSize(*window, &window_width, &window_height);
+
     // Intiializing GLAD
     return_value = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 
@@ -176,64 +164,70 @@ void initialize(GLFWwindow** window) {
     vaos = dynarray_create(sizeof(struct VaoData));
 }
 
+void render_full(mat4 model, mat4 view, mat4 projection, GLuint shader_program1, GLuint shader_program2) {
+    struct VaoData cube_vao = *(struct VaoData*)(vaos->data[0]);
+    struct VaoData light_cube_vao = *(struct VaoData*)(vaos->data[1]);
+
+    vec4 light_color = {1.0f, 1.0f, 1.0f, 1.0f};
+    vec4 object_color = {1.0f, 0.5f, 0.31f};
+
+    ///////// Cube /////////
+    glBindVertexArray(cube_vao.vao);
+    glUseProgram(shader_program1);
+
+    glUniform4fv(glad_glGetUniformLocation(shader_program1, "light_color"), 1, light_color);
+    glUniform4fv(glad_glGetUniformLocation(shader_program1, "object_color"), 1, object_color);
+
+    glUniformMatrix4fv(glad_glGetUniformLocation(shader_program1, "model"), 1, GL_FALSE, *model);
+    glUniformMatrix4fv(glad_glGetUniformLocation(shader_program1, "view"), 1, GL_FALSE, *view);
+    glUniformMatrix4fv(glad_glGetUniformLocation(shader_program1, "projection"), 1, GL_FALSE, *projection);
+
+    glDrawArrays(GL_TRIANGLES, 0, cube_vao.vertex_count);
+
+    ///////// Light source /////////
+    glBindVertexArray(light_cube_vao.vao);
+    glUseProgram(shader_program2);
+
+    glm_translate(model, (vec3){10.0f, -2.0f, 0.0f});
+
+    glUniform4fv(glad_glGetUniformLocation(shader_program2, "light_color"), 1, light_color);
+
+    glUniformMatrix4fv(glad_glGetUniformLocation(shader_program2, "model"), 1, GL_FALSE, *model);
+    glUniformMatrix4fv(glad_glGetUniformLocation(shader_program2, "view"), 1, GL_FALSE, *view);
+    glUniformMatrix4fv(glad_glGetUniformLocation(shader_program2, "projection"), 1, GL_FALSE, *projection);
+
+    glm_translate(model, (vec3){-2.0f, 2.0f, 0.0f});
+
+    glDrawArrays(GL_TRIANGLES, 0, light_cube_vao.vertex_count);
+}
+
 int main() {
     // Initializing
     GLFWwindow* window;
 
     initialize(&window);
 
-    glfwGetFramebufferSize(window, &window_width, &window_height);
-
     // test();
 
-    struct Shader shaders_data[] = {
-        (struct Shader){"./shaders/vertex_shader", GL_VERTEX_SHADER},
-        (struct Shader){"./shaders/fragment_shader", GL_FRAGMENT_SHADER},
+    struct Shader cube_shader_data[] = {
+        (struct Shader){"./shaders/cube.vs", GL_VERTEX_SHADER},
+        (struct Shader){"./shaders/cube.fs", GL_FRAGMENT_SHADER},
     };
 
-    int shader_data_count = sizeof(shaders_data)/sizeof(struct Shader);
+    struct Shader light_cube_shader_data[] = {
+        (struct Shader){"./shaders/light_cube.vs", GL_VERTEX_SHADER},
+        (struct Shader){"./shaders/light_cube.fs", GL_FRAGMENT_SHADER},
+    };
+
+    int cube_shader_data_count = sizeof(cube_shader_data)/sizeof(struct Shader);
+    int light_cube_shader_data_count = sizeof(light_cube_shader_data)/sizeof(struct Shader);
 
     // Build, compile and link the shaders
-    GLuint shader_program = link_shaders(shaders_data, shader_data_count);
+    GLuint cube_shader_program = link_shaders(cube_shader_data, cube_shader_data_count);
+    GLuint light_cube_shader_program = link_shaders(light_cube_shader_data, light_cube_shader_data_count);
 
     // Creating all the VAOs
     vertex_spec(vaos);
-
-    struct TextureWrap texture1_wrap = {
-        GL_REPEAT, GL_REPEAT,
-        GL_LINEAR, GL_LINEAR_MIPMAP_LINEAR
-    };
-
-    struct TextureWrap texture2_wrap = {
-        GL_REPEAT, GL_MIRRORED_REPEAT,
-        GL_LINEAR, GL_LINEAR_MIPMAP_LINEAR
-    };
-
-    GLuint texture1 = load_texture("./textures/container.jpg", GL_RGB, texture1_wrap, false);
-    GLuint texture2 = load_texture("./textures/awesomeface.png", GL_RGBA, texture2_wrap, true);
-
-    // The VAO to use when drawing
-    struct VaoData vao;
-
-    glUseProgram(shader_program);
-    glUniform1i(glGetUniformLocation(shader_program, "texture1"), 0);
-    glUniform1i(glGetUniformLocation(shader_program, "texture2"), 1);
-
-    GLuint blend_variable = glGetUniformLocation(shader_program, "blend");
-    glUniform1f(blend_variable, 0.3);
-
-    vec3 cubePositions[] = {
-        {0.0f,  0.0f,  0.0f}, 
-        {2.0f,  5.0f, -15.0f}, 
-        {-1.5f, -2.2f, -2.5f},
-        {-3.8f, -2.0f, -12.3f},
-        {2.4f, -0.4f, -3.5f},
-        {-1.7f,  3.0f, -7.5f},
-        {1.3f, -2.0f, -2.5f},
-        {1.5f,  2.0f, -2.5f},
-        {1.5f,  0.2f, -1.5f},
-        {-1.3f,  1.0f, -1.5f},
-    };
 
     camera = camera_create();
     camera_shift(camera, (vec3){0.0f, 0.0f, 3.0f});
@@ -256,79 +250,40 @@ int main() {
         camera_update_direction(camera);
         camera_get_view_matrix(camera, &view_mat);
 
-        // Passing matrices to the vertex shader
-        glUniformMatrix4fv(glad_glGetUniformLocation(shader_program, "model"), 1, GL_FALSE, *model_mat);
-        glUniformMatrix4fv(glad_glGetUniformLocation(shader_program, "view"), 1, GL_FALSE, *view_mat);
-        glUniformMatrix4fv(glad_glGetUniformLocation(shader_program, "projection"), 1, GL_FALSE, *projection_mat);
-
-        // Selecting the right VAO to draw
-        vao = *((struct VaoData*)vaos->data[current_vao]);
-
-        // Telling the fragment shader if texture coordinate information is in the VBO 
-        // so that it doesn't try to sample textures when there is none
-        glUniform1i(glGetUniformLocation(shader_program, "use_texture"), vao.has_texture);
-
         // Input
         handle_input(window);
 
-        // Clearing the screen
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        // Drawing with VAO
-        glUseProgram(shader_program);
-        
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, texture1);
-
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, texture2);
-
-        glBindVertexArray(vao.vao);
-
         // Finally drawing the vertices
-        for (int i=0; i<9; i++) {
-            double rotation_speed = i + 0.5;
-            if ((i % 2) == 0) {
-                rotation_speed *= -1;
-            }
+        if (enable_3d) {
+            // Basically this moves the camera left and right and recalculates its projection matrix
+            // to get a different image on each side of the screen, resulting in the 3D effect
+            
+            // Left half of the window
+            glViewport(0, 0, window_width/2, window_height);
+            camera_shift(camera, (vec3){0.0f, D3_EYE_DISTANCE, 0.0f});
+            camera_get_view_matrix(camera, &view_mat);
+            render_full(model_mat, view_mat, projection_mat, cube_shader_program, light_cube_shader_program);
+            camera_shift(camera, (vec3){0.0f, -D3_EYE_DISTANCE, 0.0f});
 
-            rotation_speed /= 2;
-
-            glm_mat4_identity(model_mat);
-            glm_translate(model_mat, cubePositions[i]);
-            glm_rotate(model_mat, glfwGetTime()*rotation_speed, (vec3){1.0f, 0.5f, 0.0f});
-            glUniformMatrix4fv(glad_glGetUniformLocation(shader_program, "model"), 1, GL_FALSE, *model_mat);
-
-            if (enable_3d) {
-                // Basically this moves the camera left and right and recalculates its projection matrix
-                // to get a different image on each side of the screen, resulting in the 3D effect
-                
-                // Left half of the window
-                glViewport(0, 0, window_width/2, window_height);
-                camera_shift(camera, (vec3){0.0f, D3_EYE_DISTANCE, 0.0f});
-                camera_get_view_matrix(camera, &view_mat);
-                glUniformMatrix4fv(glad_glGetUniformLocation(shader_program, "view"), 1, GL_FALSE, *view_mat);
-                glDrawArrays(GL_TRIANGLES, 0, vao.vertex_count);
-                camera_shift(camera, (vec3){0.0f, -D3_EYE_DISTANCE, 0.0f});
-
-                // Right half of the window
-                glViewport(window_width/2, 0, window_width/2, window_height);
-                camera_shift(camera, (vec3){0.0f, -D3_EYE_DISTANCE, 0.0f});
-                camera_get_view_matrix(camera, &view_mat);
-                glUniformMatrix4fv(glad_glGetUniformLocation(shader_program, "view"), 1, GL_FALSE, *view_mat);
-                glDrawArrays(GL_TRIANGLES, 0, vao.vertex_count);
-                camera_shift(camera, (vec3){0.0f, D3_EYE_DISTANCE, 0.0f});
-            } else {
-                // Full window
-                glViewport(0, 0, window_width, window_height);
-                glDrawArrays(GL_TRIANGLES, 0, vao.vertex_count);
-            }
+            // Right half of the window
+            glViewport(window_width/2, 0, window_width/2, window_height);
+            camera_shift(camera, (vec3){0.0f, -D3_EYE_DISTANCE, 0.0f});
+            camera_get_view_matrix(camera, &view_mat);
+            render_full(model_mat, view_mat, projection_mat, cube_shader_program, light_cube_shader_program);
+            camera_shift(camera, (vec3){0.0f, D3_EYE_DISTANCE, 0.0f});
+        } else {
+            // Full window
+            glViewport(0, 0, window_width, window_height);
+            render_full(model_mat, view_mat, projection_mat, cube_shader_program, light_cube_shader_program);
         }
 
         // Updating window
         glfwSwapBuffers(window);
         glfwPollEvents();
+
+        // Clearing the screen
+        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     }
 
     dynarray_free(vaos);
