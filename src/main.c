@@ -13,6 +13,7 @@
 #include "functions.h"
 #include "camera.h"
 #include "dynamic_array.h"
+#include "texture.h"
 #include "vertex_spec.h"
 #include "shader.h"
 
@@ -176,7 +177,6 @@ void render_full(struct MVP mvp_original, GLuint shader_program1, GLuint shader_
 
     vec3 light_color = {1.0f, 1.0f, 1.0f};
     vec3 light_position = {5.0f, -2.0f, 4.0f};
-    vec3 object_color = {1.0f, 0.5f, 0.31f};
 
     glm_vec3_rotate(light_position, glfwGetTime()/1.2f, (vec3){0.0f, 1.0f, 0.0f});
 
@@ -192,13 +192,13 @@ void render_full(struct MVP mvp_original, GLuint shader_program1, GLuint shader_
     glm_vec3_mulv(light_color, color_change, light_color);
 
     vec3 light_diffuse;
-    glm_vec3_scale(light_color, 0.8, light_diffuse);
+    glm_vec3_scale(light_color, 0.8f, light_diffuse);
 
     vec3 light_ambient;
-    glm_vec3_scale(light_color, 0.3, light_ambient);
+    glm_vec3_scale(light_color, 0.3f, light_ambient);
 
     vec3 light_specular;
-    glm_vec3_scale(light_color, 0.5, light_specular);
+    glm_vec3_scale(light_color, 1.0f, light_specular);
 
     glBindVertexArray(cube_vao.vao);
 
@@ -210,12 +210,6 @@ void render_full(struct MVP mvp_original, GLuint shader_program1, GLuint shader_
     glUniform3fv(glGetUniformLocation(shader_program1, "light.diffuse"), 1, light_diffuse);
     glUniform3fv(glGetUniformLocation(shader_program1, "light.specular"), 1, light_specular);
 
-    vec3 specular_color;
-    glm_vec3_scale(light_color, 1.0f, specular_color);
-
-    glUniform3fv(glGetUniformLocation(shader_program1, "material.ambient"), 1, object_color);
-    glUniform3fv(glGetUniformLocation(shader_program1, "material.diffuse"), 1, object_color);
-    glUniform3fv(glGetUniformLocation(shader_program1, "material.specular"), 1, specular_color);
     glUniform1f(glGetUniformLocation(shader_program1, "material.shininess"), 32);
 
     glUniform3fv(glGetUniformLocation(shader_program1, "view_position"), 1, camera->pos);
@@ -272,6 +266,18 @@ int main() {
     // Creating all the VAOs
     vertex_spec(vaos);
 
+    struct TextureWrap default_wrap = {
+        GL_REPEAT, GL_REPEAT, 
+        GL_LINEAR, GL_LINEAR_MIPMAP_LINEAR
+    };
+
+    GLuint diffuse_map = load_texture("./textures/container2.png", GL_RGBA, default_wrap, false);
+    GLuint specular_map = load_texture("./textures/container2_specular.png", GL_RGBA, default_wrap, false);
+
+    glUseProgram(cube_shader_program);
+    glUniform1i(glGetUniformLocation(cube_shader_program, "material.diffuse"), 0);
+    glUniform1i(glGetUniformLocation(cube_shader_program, "material.specular"), 1);
+
     camera = camera_create();
     camera_shift(camera, (vec3){0.0f, 0.0f, 3.0f});
 
@@ -292,6 +298,12 @@ int main() {
         // View matrix is defined by the camera
         camera_update_direction(camera);
         camera_get_view_matrix(camera, &mvp.view);
+        
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, diffuse_map);
+
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, specular_map);
 
         // Finally drawing the vertices
         if (enable_3d) {
