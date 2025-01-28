@@ -183,34 +183,63 @@ void render_full(struct MVP mvp_original, GLuint shader_program1, GLuint shader_
     ///////// Cube /////////
     glm_scale(model, (vec3){3.0f, 3.0f, 3.0f});
 
+    vec3 color_change = {
+        /* (sin(glfwGetTime() * 2.0f) + 1) / 2, */ 1,
+        /* (sin(glfwGetTime() * 0.7f) + 1) / 2, */ 1,
+        /* (sin(glfwGetTime() * 1.3f) + 1) / 2, */ 1,
+    };
+
+    glm_vec3_mulv(light_color, color_change, light_color);
+
+    vec3 light_diffuse;
+    glm_vec3_scale(light_color, 0.8, light_diffuse);
+
+    vec3 light_ambient;
+    glm_vec3_scale(light_color, 0.3, light_ambient);
+
+    vec3 light_specular;
+    glm_vec3_scale(light_color, 0.5, light_specular);
+
     glBindVertexArray(cube_vao.vao);
+
     glUseProgram(shader_program1);
 
-    glUniform3fv(glad_glGetUniformLocation(shader_program1, "light_color"), 1, light_color);
-    glUniform3fv(glad_glGetUniformLocation(shader_program1, "light_pos"), 1, light_position);
-    glUniform3fv(glad_glGetUniformLocation(shader_program1, "object_color"), 1, object_color);
-    glUniform3fv(glad_glGetUniformLocation(shader_program1, "view_position"), 1, camera->pos);
+    glUniform3fv(glGetUniformLocation(shader_program1, "light.position"), 1, light_position);
 
-    glUniformMatrix4fv(glad_glGetUniformLocation(shader_program1, "model"), 1, GL_FALSE, *model);
-    glUniformMatrix4fv(glad_glGetUniformLocation(shader_program1, "view"), 1, GL_FALSE, *view);
-    glUniformMatrix4fv(glad_glGetUniformLocation(shader_program1, "projection"), 1, GL_FALSE, *projection);
+    glUniform3fv(glGetUniformLocation(shader_program1, "light.ambient"), 1, light_ambient);
+    glUniform3fv(glGetUniformLocation(shader_program1, "light.diffuse"), 1, light_diffuse);
+    glUniform3fv(glGetUniformLocation(shader_program1, "light.specular"), 1, light_specular);
+
+    vec3 specular_color;
+    glm_vec3_scale(light_color, 1.0f, specular_color);
+
+    glUniform3fv(glGetUniformLocation(shader_program1, "material.ambient"), 1, object_color);
+    glUniform3fv(glGetUniformLocation(shader_program1, "material.diffuse"), 1, object_color);
+    glUniform3fv(glGetUniformLocation(shader_program1, "material.specular"), 1, specular_color);
+    glUniform1f(glGetUniformLocation(shader_program1, "material.shininess"), 32);
+
+    glUniform3fv(glGetUniformLocation(shader_program1, "view_position"), 1, camera->pos);
+
+    glUniformMatrix4fv(glGetUniformLocation(shader_program1, "model"), 1, GL_FALSE, *model);
+    glUniformMatrix4fv(glGetUniformLocation(shader_program1, "view"), 1, GL_FALSE, *view);
+    glUniformMatrix4fv(glGetUniformLocation(shader_program1, "projection"), 1, GL_FALSE, *projection);
 
     glDrawArrays(GL_TRIANGLES, 0, cube_vao.vertex_count);
 
-    ///////// Light source /////////
     glm_mat4_copy(mvp_original.model, model);
 
+    ///////// Light source /////////
     glBindVertexArray(light_cube_vao.vao);
     glUseProgram(shader_program2);
 
     glm_translate(model, light_position);
     glm_scale(model, (vec3){0.5f, 0.5f, 0.5f});
 
-    glUniform3fv(glad_glGetUniformLocation(shader_program2, "light_color"), 1, light_color);
+    glUniform3fv(glGetUniformLocation(shader_program2, "light_color"), 1, light_color);
 
-    glUniformMatrix4fv(glad_glGetUniformLocation(shader_program2, "model"), 1, GL_FALSE, *model);
-    glUniformMatrix4fv(glad_glGetUniformLocation(shader_program2, "view"), 1, GL_FALSE, *view);
-    glUniformMatrix4fv(glad_glGetUniformLocation(shader_program2, "projection"), 1, GL_FALSE, *projection);
+    glUniformMatrix4fv(glGetUniformLocation(shader_program2, "model"), 1, GL_FALSE, *model);
+    glUniformMatrix4fv(glGetUniformLocation(shader_program2, "view"), 1, GL_FALSE, *view);
+    glUniformMatrix4fv(glGetUniformLocation(shader_program2, "projection"), 1, GL_FALSE, *projection);
 
     glDrawArrays(GL_TRIANGLES, 0, light_cube_vao.vertex_count);
 }
@@ -248,6 +277,9 @@ int main() {
 
     // Main loop
     while (!glfwWindowShouldClose(window)) {
+        // Input
+        handle_input(window);
+
         // Declaring transformation matrices
         struct MVP mvp = create_mvp();
 
@@ -261,12 +293,9 @@ int main() {
         camera_update_direction(camera);
         camera_get_view_matrix(camera, &mvp.view);
 
-        // Input
-        handle_input(window);
-
         // Finally drawing the vertices
         if (enable_3d) {
-            // Basically this moves the camera left and right and recalculates its projection matrix
+            // Basically this moves the camera left and right and recalculates its view matrix
             // to get a different image on each side of the screen, resulting in the 3D effect
             
             // Left half of the window
