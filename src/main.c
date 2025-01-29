@@ -9,6 +9,7 @@
 #include <glad.h>
 #include <GLFW/glfw3.h>
 #include <cglm/cglm.h>
+#include <unistd.h>
 
 #include "functions.h"
 #include "camera.h"
@@ -148,6 +149,7 @@ void initialize(GLFWwindow** window) {
     glfwSetScrollCallback(*window, scroll_callback);
     glfwSetCursorPosCallback(*window, mouse_callback);
     glfwSetMouseButtonCallback(*window, mouse_button_callback);
+    glfwSwapInterval(0);
 
     glfwGetFramebufferSize(*window, &window_width, &window_height);
 
@@ -281,8 +283,16 @@ int main() {
     camera = camera_create();
     camera_shift(camera, (vec3){0.0f, 0.0f, 3.0f});
 
+    double time_start, time_end;
+    double fps_values[FPS_CAP];
+    uint64_t fps_i = 0;
+
+    int fps_values_length = sizeof(fps_values) / sizeof(double);
+
     // Main loop
     while (!glfwWindowShouldClose(window)) {
+        time_start = glfwGetTime();
+
         // Input
         handle_input(window);
 
@@ -336,6 +346,30 @@ int main() {
         // Clearing the screen
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        // FPS calculation
+        time_end = glfwGetTime();
+
+        double time_elapsed = time_end - time_start;
+
+        double sleep_time = (1.0f / FPS_CAP) - time_elapsed;
+        sleep_time = glm_max(sleep_time, 0);
+
+        usleep(sleep_time * 1000000.0f);
+
+        time_elapsed += sleep_time;
+        double fps = 1 / time_elapsed;
+
+        fps_values[fps_i] = fps;
+        fps_i += 1;
+        
+        if (fps_i >= fps_values_length) {
+            double avg_fps = sum_array(fps_values, fps_values_length) / fps_values_length;
+            printf("%f\n", avg_fps);
+
+            fps_i = 0;
+        }
+
     }
 
     dynarray_free(vaos);

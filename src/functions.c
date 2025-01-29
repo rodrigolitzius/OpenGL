@@ -41,6 +41,16 @@ void* file_read_all(const char* file_path) {
     return contents;
 }
 
+double sum_array(double* array, size_t array_length) {
+    double sum = 0;
+
+    for (size_t i=0; i < array_length; i++) {
+        sum += array[i];
+    };
+
+    return sum;
+}
+
 struct MVP create_mvp() {
     struct MVP mvp;
 

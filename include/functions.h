@@ -2,6 +2,7 @@
 #define TDE_FUNCTIONS
 
 #include <glad.h>
+#include <stdlib.h>
 
 // Print an error with glfw and exit
 void exit_with_error_glfw(const char* error_text);
@@ -11,6 +12,9 @@ void exit_with_error_generic(const char* error_text, const char* error_descripti
 
 // Reads all contents of a file
 void* file_read_all(const char* file_path);
+
+// Sums all the values in an array
+double sum_array(double* array, size_t array_length);
 
 struct MVP create_mvp();
 

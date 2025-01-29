@@ -27,6 +27,7 @@
 ///////// Definitions /////////
 /* vec3's can be used as positions or directions
    These macros exist to make clear what each vector is representing */
+#define FPS_CAP 60
 #define POS_X 0
 #define POS_Y 1
 #define POS_Z 2
