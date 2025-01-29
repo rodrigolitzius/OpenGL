@@ -183,18 +183,39 @@ void render_full(struct MVP mvp_original, GLuint shader_program1, GLuint shader_
     struct VaoData light_cube_vao = *(struct VaoData*)(vaos->data[1]);
 
     vec3 light_color = {1.0f, 1.0f, 1.0f};
-    vec3 light_position = {5.0f, -2.0f, 4.0f};
 
-    glm_vec3_rotate(light_position, glfwGetTime()/1.2f, (vec3){0.0f, 1.0f, 0.0f});
+    int light_type = LT_POINT;
+    vec3 light_vec = {0.0f, -2.0f, 2.0f};
 
-    ///////// Cube /////////
-    glm_scale(model, (vec3){3.0f, 3.0f, 3.0f});
+    // int light_type = LT_DIRECTIONAL;
+    // vec3 light_vec = {-0.2f, -1.0f, -0.3f};
 
-    vec3 color_change = {
-        /* (sin(glfwGetTime() * 2.0f) + 1) / 2, */ 1,
-        /* (sin(glfwGetTime() * 0.7f) + 1) / 2, */ 1,
-        /* (sin(glfwGetTime() * 1.3f) + 1) / 2, */ 1,
+    // int light_type = LT_SPOT;
+    // vec3 light_vec;
+    // glm_vec3_copy(camera->pos, light_vec);
+
+    // glm_vec3_rotate(light_vec, glfwGetTime()/1.2f, (vec3){0.0f, 1.0f, 0.0f});
+
+    vec3 cube_positions[] = {
+        {  0.0f,  0.0f,  0.0f  },
+        {  2.0f,  5.0f, -15.0f },
+        { -1.5f, -2.2f, -2.5f  },
+        { -3.8f, -2.0f, -12.3f },
+        {  2.4f, -0.4f, -3.5f  },
+        { -1.7f,  3.0f, -7.5f  },
+        {  1.3f, -2.0f, -2.5f  },
+        {  1.5f,  2.0f, -2.5f  },
+        {  1.5f,  0.2f, -1.5f  },
+        { -1.3f,  1.0f, -1.5f  }
     };
+
+    vec3 color_change = {1.0f, 1.0f, 1.0f};
+
+    // vec3 color_change = {
+    //     (sin(glfwGetTime() * 2.0f) + 1) / 2,
+    //     (sin(glfwGetTime() * 0.7f) + 1) / 2,
+    //     (sin(glfwGetTime() * 1.3f) + 1) / 2,
+    // };
 
     glm_vec3_mulv(light_color, color_change, light_color);
 
@@ -202,7 +223,7 @@ void render_full(struct MVP mvp_original, GLuint shader_program1, GLuint shader_
     glm_vec3_scale(light_color, 0.8f, light_diffuse);
 
     vec3 light_ambient;
-    glm_vec3_scale(light_color, 0.3f, light_ambient);
+    glm_vec3_scale(light_color, 0.1f, light_ambient);
 
     vec3 light_specular;
     glm_vec3_scale(light_color, 1.0f, light_specular);
@@ -211,30 +232,46 @@ void render_full(struct MVP mvp_original, GLuint shader_program1, GLuint shader_
 
     glUseProgram(shader_program1);
 
-    glUniform3fv(glGetUniformLocation(shader_program1, "light.position"), 1, light_position);
+    glUniform1i(glGetUniformLocation(shader_program1, "light.type"), light_type);
+    glUniform3fv(glGetUniformLocation(shader_program1, "light.vec"), 1, light_vec);
 
     glUniform3fv(glGetUniformLocation(shader_program1, "light.ambient"), 1, light_ambient);
     glUniform3fv(glGetUniformLocation(shader_program1, "light.diffuse"), 1, light_diffuse);
     glUniform3fv(glGetUniformLocation(shader_program1, "light.specular"), 1, light_specular);
 
+    glUniform1f(glGetUniformLocation(shader_program1, "light.constant"), 1.0f);
+    glUniform1f(glGetUniformLocation(shader_program1, "light.linear"), 0.027f);
+    glUniform1f(glGetUniformLocation(shader_program1, "light.quadratic"), 0.0028f);
+
+    glUniform3fv(glGetUniformLocation(shader_program1, "light.direction"), 1, camera->direction);
+    glUniform1f(glGetUniformLocation(shader_program1, "light.cutoff"), cos(glm_rad(12.5)));
+    glUniform1f(glGetUniformLocation(shader_program1, "light.outer_cutoff"), cos(glm_rad(17.5)));
+
     glUniform1f(glGetUniformLocation(shader_program1, "material.shininess"), 32);
 
     glUniform3fv(glGetUniformLocation(shader_program1, "view_position"), 1, camera->pos);
 
-    glUniformMatrix4fv(glGetUniformLocation(shader_program1, "model"), 1, GL_FALSE, *model);
     glUniformMatrix4fv(glGetUniformLocation(shader_program1, "view"), 1, GL_FALSE, *view);
     glUniformMatrix4fv(glGetUniformLocation(shader_program1, "projection"), 1, GL_FALSE, *projection);
 
-    glDrawArrays(GL_TRIANGLES, 0, cube_vao.vertex_count);
+    ///////// Cube /////////
+    for (int i=0; i < sizeof(cube_positions)/sizeof(vec3); i++) {
+        glm_scale(model, (vec3){1.0f, 1.0f, 1.0f});
+        glm_translate(model, cube_positions[i]);
 
-    glm_mat4_copy(mvp_original.model, model);
+        glUniformMatrix4fv(glGetUniformLocation(shader_program1, "model"), 1, GL_FALSE, *model);
+
+        glDrawArrays(GL_TRIANGLES, 0, cube_vao.vertex_count);
+
+        glm_mat4_copy(mvp_original.model, model);
+    }
 
     ///////// Light source /////////
     glBindVertexArray(light_cube_vao.vao);
     glUseProgram(shader_program2);
 
-    glm_translate(model, light_position);
-    glm_scale(model, (vec3){0.5f, 0.5f, 0.5f});
+    glm_translate(model, light_vec);
+    glm_scale(model, (vec3){0.3f, 0.3f, 0.3f});
 
     glUniform3fv(glGetUniformLocation(shader_program2, "light_color"), 1, light_color);
 
@@ -242,7 +279,9 @@ void render_full(struct MVP mvp_original, GLuint shader_program1, GLuint shader_
     glUniformMatrix4fv(glGetUniformLocation(shader_program2, "view"), 1, GL_FALSE, *view);
     glUniformMatrix4fv(glGetUniformLocation(shader_program2, "projection"), 1, GL_FALSE, *projection);
 
-    glDrawArrays(GL_TRIANGLES, 0, light_cube_vao.vertex_count);
+    if (light_type == LT_POINT) {
+        glDrawArrays(GL_TRIANGLES, 0, light_cube_vao.vertex_count);
+    }
 }
 
 int main() {
@@ -370,12 +409,14 @@ int main() {
         
         if (fps_i >= fps_values_length) {
             double avg_fps = sum_array(fps_values, fps_values_length) / fps_values_length;
-            printf("%f\n", avg_fps);
+            printf("\rFPS: %.2f    ", avg_fps);
+            fflush(stdout);
 
             fps_i = 0;
         }
-
     }
+    
+    printf("\n");
 
     dynarray_free(vaos);
 
