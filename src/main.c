@@ -117,7 +117,12 @@ void handle_input(GLFWwindow* window) {
         direction[UP] += 1;
     }
 
-    camera_move(camera, direction);
+    double speed = 1;
+    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) {
+        speed = 3;
+    }
+
+    camera_move(camera, direction, speed);
 }
 
 // Stuff to do only once at the start of the program

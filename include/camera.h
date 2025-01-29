@@ -11,18 +11,18 @@ struct camera {
 struct camera* camera_create();
 
 // Moves the camera relative to it's direction.
-// This is meant for player control
+// This is meant for player control since speed is normalized
 // {x, 0.0, 0.0} means forwards/backwards
 // {0.0, x, 0.0} means left/right
 // {0.0, 0.0, x} means up/down
 // - Up and down move the camera relative to the scene up, not it's up vector
 // - Values of X are either -1, 0 or 1. Any oher number does not affect the result 
-//   since the movement is normalized at the end. The speed is defined by MOV_SPEED
-void camera_move(struct camera* camera, vec3 direction);
+// - The speed is defined by MOV_SPEED * speed
+void camera_move(struct camera* camera, vec3 direction, double speed);
 
 // Same as move_camera, but does not normalize the vectors, so it can be used to
-// move the camera a specified amount
-void camera_shift(struct camera* camera, vec3 direction);
+// move the camera a specific amount. The direction AND speed is defined by vec
+void camera_shift(struct camera* camera, vec3 vec);
 
 // Updates the camera direction based on its yaw and pitch
 void camera_update_direction(struct camera* camera);

@@ -37,9 +37,10 @@ This project has a "fake 3D" mode that allows you to perceive depth from 2D imag
 ## Key bindings
 | Key | Action |
 | -- | -- |
-| WASD | Forwards/backwards, left/right|
+| WASD | Forwards/backwards, left/right |
+| E | Move faster |
 | Space/LShift | Up/down |
-| Right Click | Grab/release cursor|
+| Right Click | Grab/release cursor |
 | Mouse Wheel | Change FOV |
 | C | Enable wireframe mode |
 | 3 | Enable cross-eye 3D mode |
