@@ -16,6 +16,7 @@ void* file_read_all(const char* file_path);
 // Sums all the values in an array
 double sum_array(double* array, size_t array_length);
 
+// Creates identity model, view, and projection matrices
 struct MVP create_mvp();
 
 #endif

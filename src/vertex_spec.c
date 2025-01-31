@@ -123,7 +123,7 @@ void vertex_spec(struct DynamicArray* vaos) {
     glBindVertexArray(0);
 
     struct VaoData temp1 = {
-        vao1, vertex_count1, "Main", true
+        vao1, vertex_count1, "Main"
     };
 
     struct VaoData *vao_1 = malloc(sizeof(struct VaoData));
@@ -180,7 +180,6 @@ void vertex_spec(struct DynamicArray* vaos) {
     };
     GLuint vertex_count2 = (sizeof(vertices1) / sizeof(double)) / 6;
 
-
     // Setting VBO do draw the defined vertices
     // and VAO to remember what to draw
     GLuint vao2, vbo2;
@@ -202,7 +201,7 @@ void vertex_spec(struct DynamicArray* vaos) {
     glBindVertexArray(0);
 
     struct VaoData temp2 = {
-        vao2, vertex_count2, "Light", false
+        vao2, vertex_count2, "Light"
     };
 
     struct VaoData *vao_2 = malloc(sizeof(struct VaoData));

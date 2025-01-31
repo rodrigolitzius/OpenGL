@@ -40,16 +40,15 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     window_height = height;
 }
 
+// Runs when the scroll wheels is, well, scrolled
 void scroll_callback(GLFWwindow* window, double x_offset, double y_offset) {
-    fov += y_offset * fov/INITIAL_FOV * 2;
+    // fov / INITIAL_FOV prevents the FOV changing too quick or slow, allowing for better control over the FOV
+    fov += y_offset * fov / INITIAL_FOV * 2;
 
-    if (fov > 180) {
-        fov = 180;
-    } else if (fov < 0) {
-        fov = 0;
-    }
+    glm_clamp(fov, 1, 179);
 }
 
+// Runs at every movement of the mouse
 void mouse_callback(GLFWwindow* window, double x_pos, double y_pos) {
     double mouse_rel_x_displacement = mouse_last_x - x_pos;
     double mouse_rel_y_displacement = mouse_last_y - y_pos;
@@ -57,14 +56,14 @@ void mouse_callback(GLFWwindow* window, double x_pos, double y_pos) {
     mouse_last_x = x_pos;
     mouse_last_y = y_pos;
 
-    // fov/INITIAL_FOV decreases the camera sensitivity as you zoom
+    // fov / INITIAL_FOV prevents the camera from moving too quick or slow allowing for better control over the camera
     camera->yaw += (CAMERA_SENSITIVITY * (fov/INITIAL_FOV) * mouse_rel_x_displacement);
     camera->pitch += (CAMERA_SENSITIVITY * (fov/INITIAL_FOV) * mouse_rel_y_displacement);
 }
 
 // Runs at every key press
 void key_event_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    // Switch wireframe mode
+    // Toggle wireframe mode
     if (key == GLFW_KEY_C && action == GLFW_PRESS) {
         draw_wireframe = !draw_wireframe;
 
@@ -75,12 +74,15 @@ void key_event_callback(GLFWwindow* window, int key, int scancode, int action, i
         }
     }
 
+    // Toggle 3D view mode
     if (key == GLFW_KEY_3 && action == GLFW_PRESS) {
         enable_3d = !enable_3d;
     }
 }
 
+// Runs everytime a mouse button is pressed
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
+    // Grab/release cursor
     if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
         if (glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED) {
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
@@ -90,6 +92,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
     }
 }
 
+// Generic input handling
 void handle_input(GLFWwindow* window) {
     vec3 direction = {0.0f, 0.0f, 0.0f};
 
@@ -172,9 +175,11 @@ void initialize(GLFWwindow** window) {
     vaos = dynarray_create(sizeof(struct VaoData));
 }
 
+// Render the scene to the screen
 void render_full(struct MVP mvp_original, GLuint shader_program1, GLuint shader_program2) {
     mat4 model, view, projection;
 
+    // Original copies of the MVP are necessary to rollback changes to it
     glm_mat4_copy(mvp_original.model, model);
     glm_mat4_copy(mvp_original.view, view);
     glm_mat4_copy(mvp_original.projection, projection);
@@ -184,13 +189,14 @@ void render_full(struct MVP mvp_original, GLuint shader_program1, GLuint shader_
 
     vec3 light_color = {1.0f, 1.0f, 1.0f};
 
-    int light_type = LT_POINT;
+    // Different lighting types
+    int light_type = LIGHTT_POINT;
     vec3 light_vec = {0.0f, -2.0f, 2.0f};
 
-    // int light_type = LT_DIRECTIONAL;
+    // int light_type = LIGHTT_DIRECTIONAL;
     // vec3 light_vec = {-0.2f, -1.0f, -0.3f};
 
-    // int light_type = LT_SPOT;
+    // int light_type = LIGHTT_SPOT;
     // vec3 light_vec;
     // glm_vec3_copy(camera->pos, light_vec);
 
@@ -209,8 +215,10 @@ void render_full(struct MVP mvp_original, GLuint shader_program1, GLuint shader_
         { -1.3f,  1.0f, -1.5f  }
     };
 
+    // Change the color of the lighting here
     vec3 color_change = {1.0f, 1.0f, 1.0f};
 
+    // For funky lighting effects
     // vec3 color_change = {
     //     (sin(glfwGetTime() * 2.0f) + 1) / 2,
     //     (sin(glfwGetTime() * 0.7f) + 1) / 2,
@@ -232,6 +240,7 @@ void render_full(struct MVP mvp_original, GLuint shader_program1, GLuint shader_
 
     glUseProgram(shader_program1);
 
+    // Passing light variables to the shader
     glUniform1i(glGetUniformLocation(shader_program1, "light.type"), light_type);
     glUniform3fv(glGetUniformLocation(shader_program1, "light.vec"), 1, light_vec);
 
@@ -255,6 +264,7 @@ void render_full(struct MVP mvp_original, GLuint shader_program1, GLuint shader_
     glUniformMatrix4fv(glGetUniformLocation(shader_program1, "projection"), 1, GL_FALSE, *projection);
 
     ///////// Cube /////////
+    // Draws cubes on different places
     for (int i=0; i < sizeof(cube_positions)/sizeof(vec3); i++) {
         glm_scale(model, (vec3){1.0f, 1.0f, 1.0f});
         glm_translate(model, cube_positions[i]);
@@ -279,7 +289,7 @@ void render_full(struct MVP mvp_original, GLuint shader_program1, GLuint shader_
     glUniformMatrix4fv(glGetUniformLocation(shader_program2, "view"), 1, GL_FALSE, *view);
     glUniformMatrix4fv(glGetUniformLocation(shader_program2, "projection"), 1, GL_FALSE, *projection);
 
-    if (light_type == LT_POINT) {
+    if (light_type == LIGHTT_POINT) {
         glDrawArrays(GL_TRIANGLES, 0, light_cube_vao.vertex_count);
     }
 }
@@ -290,8 +300,7 @@ int main() {
 
     initialize(&window);
 
-    // test();
-
+    // Build, compile and link the shaders
     struct Shader cube_shader_data[] = {
         (struct Shader){"./shaders/cube.vs", GL_VERTEX_SHADER},
         (struct Shader){"./shaders/cube.fs", GL_FRAGMENT_SHADER},
@@ -305,7 +314,6 @@ int main() {
     int cube_shader_data_count = sizeof(cube_shader_data)/sizeof(struct Shader);
     int light_cube_shader_data_count = sizeof(light_cube_shader_data)/sizeof(struct Shader);
 
-    // Build, compile and link the shaders
     GLuint cube_shader_program = link_shaders(cube_shader_data, cube_shader_data_count);
     GLuint light_cube_shader_program = link_shaders(light_cube_shader_data, light_cube_shader_data_count);
 
@@ -317,8 +325,16 @@ int main() {
         GL_LINEAR, GL_LINEAR_MIPMAP_LINEAR
     };
 
-    GLuint diffuse_map = load_texture("./textures/container2.png", GL_RGBA, default_wrap, false);
-    GLuint specular_map = load_texture("./textures/container2_specular.png", GL_RGBA, default_wrap, false);
+    // Loading textures
+    struct Texture diffuse_map = {
+        load_texture("./textures/container2.png", GL_RGBA, default_wrap, false),
+        TEXTT_DIFFUSE
+    };
+
+    struct Texture specular_map = {
+        load_texture("./textures/container2_specular.png", GL_RGBA, default_wrap, false),
+        TEXTT_SPECULAR
+    };
 
     glUseProgram(cube_shader_program);
     glUniform1i(glGetUniformLocation(cube_shader_program, "material.diffuse"), 0);
@@ -327,9 +343,10 @@ int main() {
     camera = camera_create();
     camera_shift(camera, (vec3){0.0f, 0.0f, 3.0f});
 
+    // related to FPS/deltatime calculation
     double time_start, time_end;
     double fps_values[FPS_CAP];
-    uint64_t fps_i = 0;
+    uint64_t frames_elapsed = 0;
 
     int fps_values_length = sizeof(fps_values) / sizeof(double);
 
@@ -343,27 +360,23 @@ int main() {
         // Declaring transformation matrices
         struct MVP mvp = create_mvp();
 
-        if (enable_3d) {
-            glm_perspective(glm_rad(fov), (window_width/2.0f)/(double)window_height, 0.01, 100, mvp.projection);
-        } else {
-            glm_perspective(glm_rad(fov), (double)window_width/(double)window_height, 0.01, 100, mvp.projection);
-        }
-
         // View matrix is defined by the camera
         camera_update_direction(camera);
         camera_get_view_matrix(camera, &mvp.view);
-        
+
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, diffuse_map);
+        glBindTexture(GL_TEXTURE_2D, diffuse_map.id);
 
         glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, specular_map);
+        glBindTexture(GL_TEXTURE_2D, specular_map.id);
 
-        // Finally drawing the vertices
         if (enable_3d) {
             // Basically this moves the camera left and right and recalculates its view matrix
             // to get a different image on each side of the screen, resulting in the 3D effect
             
+            // The size of the viewport changes when 3D mode is enabled, so the proj matrix should account for that
+            glm_perspective(glm_rad(fov), (window_width/2.0f)/(double)window_height, 0.01, 100, mvp.projection);
+
             // Left half of the window
             glViewport(0, 0, window_width/2, window_height);
             camera_shift(camera, (vec3){0.0f, D3_EYE_DISTANCE, 0.0f});
@@ -379,6 +392,8 @@ int main() {
             camera_shift(camera, (vec3){0.0f, D3_EYE_DISTANCE, 0.0f});
         } else {
             // Full window
+            glm_perspective(glm_rad(fov), (double)window_width/(double)window_height, 0.01, 100, mvp.projection);
+
             glViewport(0, 0, window_width, window_height);
             render_full(mvp, cube_shader_program, light_cube_shader_program);
         }
@@ -404,18 +419,18 @@ int main() {
         time_elapsed += sleep_time;
         double fps = 1 / time_elapsed;
 
-        fps_values[fps_i] = fps;
-        fps_i += 1;
+        fps_values[frames_elapsed] = fps;
+        frames_elapsed += 1;
         
-        if (fps_i >= fps_values_length) {
+        if (frames_elapsed % FPS_CAP == 0) {
             double avg_fps = sum_array(fps_values, fps_values_length) / fps_values_length;
             printf("\rFPS: %.2f    ", avg_fps);
             fflush(stdout);
 
-            fps_i = 0;
+            frames_elapsed = 0;
         }
     }
-    
+
     printf("\n");
 
     dynarray_free(vaos);

@@ -40,7 +40,7 @@
 #define WORLD_UP (vec3){0.0f, 1.0f, 0.0f}
 
 struct VaoData {
-    GLuint vao; unsigned int vertex_count; char name[128]; bool has_texture;
+    GLuint vao; unsigned int vertex_count; char name[128];
 };
 
 struct MVP {
