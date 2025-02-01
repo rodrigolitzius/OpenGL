@@ -75,11 +75,7 @@ void camera_get_view_matrix(struct camera* camera, mat4* matrix) {
 }
 
 void camera_update_direction(struct camera* camera) {
-    if (camera->pitch > (PI/2.0f) - 0.0005) {
-        camera->pitch = (PI/2.0f) - 0.0005;
-    } else if (camera->pitch < (-PI/2.0f) + 0.0005) {
-        camera->pitch = (-PI/2.0f) + 0.0005;
-    }
+    camera->pitch = glm_clamp(camera->pitch, -PI/2.0f + 0.0005, PI/2.0f - 0.00005);
 
     camera->direction[FORWARD] = cos(camera->yaw) * cos(camera->pitch);
     camera->direction[RIGHT] = -sin(camera->pitch);

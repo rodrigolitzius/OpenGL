@@ -45,7 +45,7 @@ void scroll_callback(GLFWwindow* window, double x_offset, double y_offset) {
     // fov / INITIAL_FOV prevents the FOV changing too quick or slow, allowing for better control over the FOV
     fov += y_offset * fov / INITIAL_FOV * 2;
 
-    glm_clamp(fov, 1, 179);
+    fov = glm_clamp(fov, 1, 179);
 }
 
 // Runs at every movement of the mouse
