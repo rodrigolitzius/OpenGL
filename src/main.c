@@ -32,6 +32,10 @@ double mouse_last_x = WINDOW_WIDTH/2.0f;
 double mouse_last_y = WINDOW_HEIGHT/2.0f;
 
 struct camera* camera;
+// Used in lighting calculations when the ligthing directly depends on the position of the camera.
+// such as a spotlight
+vec3 camera_original_pos;
+
 double fov = INITIAL_FOV;
 
 // Runs when the size of the window is changed
@@ -198,7 +202,7 @@ void render_full(struct MVP mvp_original, GLuint shader_program1, GLuint shader_
 
     // int light_type = LIGHTT_SPOT;
     // vec3 light_vec;
-    // glm_vec3_copy(camera->pos, light_vec);
+    // glm_vec3_copy(camera_original_pos, light_vec);
 
     // glm_vec3_rotate(light_vec, glfwGetTime()/1.2f, (vec3){0.0f, 1.0f, 0.0f});
 
@@ -258,7 +262,11 @@ void render_full(struct MVP mvp_original, GLuint shader_program1, GLuint shader_
 
     glUniform1f(glGetUniformLocation(shader_program1, "material.shininess"), 32);
 
-    glUniform3fv(glGetUniformLocation(shader_program1, "view_position"), 1, camera->pos);
+    if (light_type == LIGHTT_SPOT) {
+        glUniform3fv(glGetUniformLocation(shader_program1, "view_position"), 1, camera_original_pos);
+    } else {
+        glUniform3fv(glGetUniformLocation(shader_program1, "view_position"), 1, camera->pos);
+    }
 
     glUniformMatrix4fv(glGetUniformLocation(shader_program1, "view"), 1, GL_FALSE, *view);
     glUniformMatrix4fv(glGetUniformLocation(shader_program1, "projection"), 1, GL_FALSE, *projection);
@@ -369,6 +377,8 @@ int main() {
 
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, specular_map.id);
+
+        glm_vec3_copy(camera->pos, camera_original_pos);
 
         if (enable_3d) {
             // Basically this moves the camera left and right and recalculates its view matrix
