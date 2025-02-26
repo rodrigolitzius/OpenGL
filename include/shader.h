@@ -1,7 +1,7 @@
 #ifndef TDE_SHADER
 #define TDE_SHADER
 
-#include <glad.h>
+#include <include_glad.h>
 #include <cglm/cglm.h>
 
 // Light types

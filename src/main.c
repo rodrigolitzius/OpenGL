@@ -1,21 +1,24 @@
+// This is required for nanosleep()
+#define _POSIX_C_SOURCE 199309L
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
-
+#include <time.h>
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
-#include <glad.h>
+#include <include_glad.h>
 #include <GLFW/glfw3.h>
 #include <cglm/cglm.h>
-#include <unistd.h>
 
 #include "functions.h"
 #include "camera.h"
 #include "dynamic_array.h"
 #include "texture.h"
 #include "vertex_spec.h"
+#include "input.h"
 #include "shader.h"
 
 #include <main.h>
@@ -28,16 +31,10 @@ struct DynamicArray* vaos;
 int window_width;
 int window_height;
 
-double mouse_last_x = WINDOW_WIDTH/2.0f;
-double mouse_last_y = WINDOW_HEIGHT/2.0f;
-
 struct camera* camera;
 // Used in lighting calculations when the ligthing directly depends on the position of the camera.
 // such as a spotlight
 vec3 camera_original_pos;
-
-double fov = INITIAL_FOV;
-
 // Runs when the size of the window is changed
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     window_width = width;
@@ -47,22 +44,13 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 // Runs when the scroll wheels is, well, scrolled
 void scroll_callback(GLFWwindow* window, double x_offset, double y_offset) {
     // fov / INITIAL_FOV prevents the FOV changing too quick or slow, allowing for better control over the FOV
-    fov += y_offset * fov / INITIAL_FOV * 2;
-
-    fov = glm_clamp(fov, 1, 179);
+    camera->fov += y_offset * camera->fov / INITIAL_FOV * 2;
+    camera->fov = glm_clamp(camera->fov, 1, 179);
 }
 
 // Runs at every movement of the mouse
 void mouse_callback(GLFWwindow* window, double x_pos, double y_pos) {
-    double mouse_rel_x_displacement = mouse_last_x - x_pos;
-    double mouse_rel_y_displacement = mouse_last_y - y_pos;
-
-    mouse_last_x = x_pos;
-    mouse_last_y = y_pos;
-
-    // fov / INITIAL_FOV prevents the camera from moving too quick or slow allowing for better control over the camera
-    camera->yaw += (CAMERA_SENSITIVITY * (fov/INITIAL_FOV) * mouse_rel_x_displacement);
-    camera->pitch += (CAMERA_SENSITIVITY * (fov/INITIAL_FOV) * mouse_rel_y_displacement);
+    // Nothing to do (there was once)
 }
 
 // Runs at every key press
@@ -96,40 +84,9 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
     }
 }
 
-// Generic input handling
 void handle_input(GLFWwindow* window) {
-    vec3 direction = {0.0f, 0.0f, 0.0f};
-
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-        direction[FORWARD] += 1;
-    }
-
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-        direction[FORWARD] += -1;
-    }
-
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-        direction[RIGHT] += -1;
-    }
-
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-        direction[RIGHT] += 1;
-    }
-
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
-        direction[UP] += -1;
-    }
-
-    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
-        direction[UP] += 1;
-    }
-
-    double speed = 1;
-    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) {
-        speed = 3;
-    }
-
-    camera_move(camera, direction, speed);
+    move_camera(window, camera);
+    rotate_camera(window, camera);
 }
 
 // Stuff to do only once at the start of the program
@@ -180,7 +137,7 @@ void initialize(GLFWwindow** window) {
 }
 
 // Render the scene to the screen
-void render_full(struct MVP mvp_original, GLuint shader_program1, GLuint shader_program2) {
+void render_full(struct MVP mvp_original, GLuint shader_program1, GLuint shader_program2, GLuint shader_program3) {
     mat4 model, view, projection;
 
     // Original copies of the MVP are necessary to rollback changes to it
@@ -190,6 +147,7 @@ void render_full(struct MVP mvp_original, GLuint shader_program1, GLuint shader_
 
     struct VaoData cube_vao = *(struct VaoData*)(vaos->data[0]);
     struct VaoData light_cube_vao = *(struct VaoData*)(vaos->data[1]);
+    struct VaoData axis_vao = *(struct VaoData*)(vaos->data[2]);
 
     vec3 light_color = {1.0f, 1.0f, 1.0f};
 
@@ -235,7 +193,7 @@ void render_full(struct MVP mvp_original, GLuint shader_program1, GLuint shader_
     glm_vec3_scale(light_color, 0.8f, light_diffuse);
 
     vec3 light_ambient;
-    glm_vec3_scale(light_color, 0.1f, light_ambient);
+    glm_vec3_scale(light_color, 0.2f, light_ambient);
 
     vec3 light_specular;
     glm_vec3_scale(light_color, 1.0f, light_specular);
@@ -300,6 +258,20 @@ void render_full(struct MVP mvp_original, GLuint shader_program1, GLuint shader_
     if (light_type == LIGHTT_POINT) {
         glDrawArrays(GL_TRIANGLES, 0, light_cube_vao.vertex_count);
     }
+
+    glm_mat4_copy(mvp_original.model, model);
+
+    ///////// Axis /////////
+    glBindVertexArray(axis_vao.vao);
+    glUseProgram(shader_program3);
+
+    glUniformMatrix4fv(glGetUniformLocation(shader_program3, "model"), 1, GL_FALSE, *model);
+    glUniformMatrix4fv(glGetUniformLocation(shader_program3, "view"), 1, GL_FALSE, *view);
+    glUniformMatrix4fv(glGetUniformLocation(shader_program3, "projection"), 1, GL_FALSE, *projection);
+
+    // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    glDrawArrays(GL_LINES, 0, axis_vao.vertex_count);
+    // glPolygonMode(GL_FRONT_AND_BACK, GL_TRIANGLES);
 }
 
 int main() {
@@ -319,11 +291,18 @@ int main() {
         (struct Shader){"./shaders/light_cube.fs", GL_FRAGMENT_SHADER},
     };
 
+    struct Shader axis_shader_data[] = {
+        (struct Shader){"./shaders/axis.vs", GL_VERTEX_SHADER},
+        (struct Shader){"./shaders/axis.fs", GL_FRAGMENT_SHADER},
+    };
+
     int cube_shader_data_count = sizeof(cube_shader_data)/sizeof(struct Shader);
     int light_cube_shader_data_count = sizeof(light_cube_shader_data)/sizeof(struct Shader);
+    int axis_shader_data_count = sizeof(axis_shader_data)/sizeof(struct Shader);
 
     GLuint cube_shader_program = link_shaders(cube_shader_data, cube_shader_data_count);
     GLuint light_cube_shader_program = link_shaders(light_cube_shader_data, light_cube_shader_data_count);
+    GLuint axis_shader_program = link_shaders(axis_shader_data, axis_shader_data_count);
 
     // Creating all the VAOs
     vertex_spec(vaos);
@@ -385,27 +364,27 @@ int main() {
             // to get a different image on each side of the screen, resulting in the 3D effect
             
             // The size of the viewport changes when 3D mode is enabled, so the proj matrix should account for that
-            glm_perspective(glm_rad(fov), (window_width/2.0f)/(double)window_height, 0.01, 100, mvp.projection);
+            glm_perspective(glm_rad(camera->fov), (window_width/2.0f)/(double)window_height, 0.01, 100, mvp.projection);
 
             // Left half of the window
             glViewport(0, 0, window_width/2, window_height);
             camera_shift(camera, (vec3){0.0f, D3_EYE_DISTANCE, 0.0f});
             camera_get_view_matrix(camera, &mvp.view);
-            render_full(mvp, cube_shader_program, light_cube_shader_program);
+            render_full(mvp, cube_shader_program, light_cube_shader_program, axis_shader_program);
             camera_shift(camera, (vec3){0.0f, -D3_EYE_DISTANCE, 0.0f});
 
             // Right half of the window
             glViewport(window_width/2, 0, window_width/2, window_height);
             camera_shift(camera, (vec3){0.0f, -D3_EYE_DISTANCE, 0.0f});
             camera_get_view_matrix(camera, &mvp.view);
-            render_full(mvp, cube_shader_program, light_cube_shader_program);
+            render_full(mvp, cube_shader_program, light_cube_shader_program, axis_shader_program);
             camera_shift(camera, (vec3){0.0f, D3_EYE_DISTANCE, 0.0f});
         } else {
             // Full window
-            glm_perspective(glm_rad(fov), (double)window_width/(double)window_height, 0.01, 100, mvp.projection);
+            glm_perspective(glm_rad(camera->fov), (double)window_width/(double)window_height, 0.01, 100, mvp.projection);
 
             glViewport(0, 0, window_width, window_height);
-            render_full(mvp, cube_shader_program, light_cube_shader_program);
+            render_full(mvp, cube_shader_program, light_cube_shader_program, axis_shader_program);
         }
 
         // Updating window
@@ -421,12 +400,15 @@ int main() {
 
         double time_elapsed = time_end - time_start;
 
-        double sleep_time = (1.0f / FPS_CAP) - time_elapsed;
-        sleep_time = glm_max(sleep_time, 0);
+        struct timespec sleep_time;
 
-        usleep(sleep_time * 1000000.0f);
+        sleep_time.tv_sec = 0;
+        sleep_time.tv_nsec = ((1.0f / FPS_CAP) - time_elapsed) * 1000000000.0f;
+        sleep_time.tv_nsec = glm_max(sleep_time.tv_nsec, 0);
 
-        time_elapsed += sleep_time;
+        nanosleep(&sleep_time, NULL);
+
+        time_elapsed += sleep_time.tv_nsec / 1000000000.0f;
         double fps = 1 / time_elapsed;
 
         fps_values[frames_elapsed] = fps;

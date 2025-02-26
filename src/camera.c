@@ -5,6 +5,7 @@
 
 #include "main.h"
 #include "camera.h"
+#include "functions.h"
 
 #include <GLFW/glfw3.h>
 
@@ -19,6 +20,11 @@ struct camera* camera_create() {
     camera->direction[FORWARD] = 0;
     camera->direction[RIGHT] = 0;
     camera->direction[UP] = 0;
+
+    camera->fov = INITIAL_FOV;
+
+    camera->yaw = 0;
+    camera->pitch = 0;
 
     return camera;
 }
@@ -40,7 +46,7 @@ void camera_move(struct camera* camera, vec3 direction, double speed) {
 
     // Normalize the vector so that speeds don't add up
     // e.g. when you point up and go forward and up at the same time
-    glm_normalize(final_movement);
+    normalize_if_mag_gt_1(final_movement, final_movement);
     glm_vec3_scale(final_movement, MOV_SPEED * speed, final_movement);
     glm_vec3_add(camera->pos, final_movement, camera->pos);
 }

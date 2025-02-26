@@ -1,6 +1,6 @@
 #include <stdbool.h>
 
-#include <glad.h>
+#include <include_glad.h>
 
 #include "stb_image.h"
 

@@ -5,6 +5,7 @@
 #include "main.h"
 
 #include <GLFW/glfw3.h>
+#include <cglm/cglm.h>
 
 void exit_with_error_glfw(const char* error_text) {
     const char* error_description = NULL;
@@ -59,4 +60,12 @@ struct MVP create_mvp() {
     glm_mat4_identity(mvp.projection);
 
     return mvp;
+}
+
+void normalize_if_mag_gt_1(vec3 vec, vec3 dest) {
+    if (glm_vec3_norm(vec) > 1.0f) {
+        glm_normalize_to(vec, dest);
+    } else {
+        glm_vec3_copy(vec, dest);
+    }
 }

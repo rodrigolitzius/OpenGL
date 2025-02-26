@@ -1,7 +1,7 @@
 #ifndef TDE_MAIN
 #define TDE_MAIN
 
-#include <glad.h>
+#include <include_glad.h>
 #include <stdbool.h>
 #include <cglm/cglm.h>
 
@@ -17,9 +17,10 @@
 #define MOV_SPEED 0.05f
 #define INITIAL_FOV 90
 #define CAMERA_SENSITIVITY 0.005f
+#define JOYSTICK_DEADZONE 0.09 // Fom 0 to 1
 
 ///////// CROSS EYE 3D /////////
-#define D3_EYE_DISTANCE 0.1f // D3 = 3D
+#define D3_EYE_DISTANCE 0.12f // D3 = 3D
 
 ///////// MATH /////////
 #define PI 3.14159265358979

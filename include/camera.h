@@ -4,7 +4,7 @@
 #include <cglm/cglm.h>
 
 struct camera {
-    vec3 pos; vec3 direction; double yaw; double pitch;
+    vec3 pos; vec3 direction; double yaw; double pitch; double fov;
 };
 
 // Returns the pointer to a camera struct

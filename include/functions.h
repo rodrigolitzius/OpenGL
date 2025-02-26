@@ -1,8 +1,8 @@
 #ifndef TDE_FUNCTIONS
 #define TDE_FUNCTIONS
 
-#include <glad.h>
-#include <stdlib.h>
+#include <cglm/cglm.h>
+#include <include_glad.h>
 
 // Print an error with glfw and exit
 void exit_with_error_glfw(const char* error_text);
@@ -18,5 +18,8 @@ double sum_array(double* array, size_t array_length);
 
 // Creates identity model, view, and projection matrices
 struct MVP create_mvp();
+
+// Normalize vec only if its magnitude > 1
+void normalize_if_mag_gt_1(vec3 vec, vec3 dest);
 
 #endif

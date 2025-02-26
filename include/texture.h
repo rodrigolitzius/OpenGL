@@ -2,8 +2,7 @@
 #define TDE_TEXTURE
 
 #include <stdbool.h>
-
-#include <glad.h>
+#include <include_glad.h>
 
 struct TextureWrap {
     GLenum s_wrap; GLenum t_wrap; GLenum mag_filter; GLenum min_mipmap_filter;
