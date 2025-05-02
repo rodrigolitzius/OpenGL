@@ -10,7 +10,7 @@
 #include <GLFW/glfw3.h>
 
 struct camera* camera_create() {
-    struct camera* camera = malloc(sizeof(struct camera));
+    struct camera* camera = safe_malloc(sizeof(struct camera));
 
     // Initializing everything to 0
     camera->pos[POS_X] = 0;
@@ -27,6 +27,10 @@ struct camera* camera_create() {
     camera->pitch = 0;
 
     return camera;
+}
+
+void camera_destroy(struct camera* camera) {
+    free(camera);
 }
 
 void camera_move(struct camera* camera, vec3 direction, double speed) {

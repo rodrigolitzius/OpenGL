@@ -22,4 +22,7 @@ struct MVP create_mvp();
 // Normalize vec only if its magnitude > 1
 void normalize_if_mag_gt_1(vec3 vec, vec3 dest);
 
+// Error checked and logged malloc()
+void* safe_malloc(size_t size);
+
 #endif

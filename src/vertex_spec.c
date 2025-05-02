@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "functions.h"
 #include <include_glad.h>
 #include "main.h"
 #include "dynamic_array.h"
@@ -126,7 +127,7 @@ void vertex_spec(struct DynamicArray* vaos) {
         vao1, vertex_count1, "Main"
     };
 
-    struct VaoData *vao_1 = malloc(sizeof(struct VaoData));
+    struct VaoData *vao_1 = safe_malloc(sizeof(struct VaoData));
     memcpy(vao_1, &temp1, sizeof(struct VaoData));
 
     dynarray_add(vaos, vao_1);
@@ -204,7 +205,7 @@ void vertex_spec(struct DynamicArray* vaos) {
         vao2, vertex_count2, "Light"
     };
 
-    struct VaoData *vao_2 = malloc(sizeof(struct VaoData));
+    struct VaoData *vao_2 = safe_malloc(sizeof(struct VaoData));
     memcpy(vao_2, &temp2, sizeof(struct VaoData));
 
     dynarray_add(vaos, vao_2);
@@ -270,7 +271,7 @@ void vertex_spec(struct DynamicArray* vaos) {
         vao3, vertex_count3, "Axis"
     };
 
-    struct VaoData *vao_3 = malloc(sizeof(struct VaoData));
+    struct VaoData *vao_3 = safe_malloc(sizeof(struct VaoData));
     memcpy(vao_3, &temp3, sizeof(struct VaoData));
 
     dynarray_add(vaos, vao_3);

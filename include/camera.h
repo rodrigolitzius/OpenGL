@@ -10,6 +10,9 @@ struct camera {
 // Returns the pointer to a camera struct
 struct camera* camera_create();
 
+// Frees the camera struct
+void camera_destroy(struct camera* camera);
+
 // Moves the camera relative to it's direction.
 // This is meant for player control since speed is normalized
 // {x, 0.0, 0.0} means forwards/backwards

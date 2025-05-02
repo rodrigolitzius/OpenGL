@@ -28,7 +28,7 @@ void* file_read_all(const char* file_path) {
     fseek(file, 0, SEEK_SET);
 
     // Allocating enough memory to hold the data in the file
-    void* contents = malloc(file_size+1);
+    void* contents = safe_malloc(file_size+1);
 
     // Reading all the data
     fread(contents, 1, file_size, file);
@@ -68,4 +68,14 @@ void normalize_if_mag_gt_1(vec3 vec, vec3 dest) {
     } else {
         glm_vec3_copy(vec, dest);
     }
+}
+
+void* safe_malloc(size_t size) {
+    void* address = malloc(size);
+
+    if (!address) {
+        exit_with_error_generic("Malloc failed", "");
+    }
+
+    return address;
 }

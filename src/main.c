@@ -328,7 +328,7 @@ int main() {
     glUniform1i(glGetUniformLocation(cube_shader_program, "material.specular"), 1);
 
     camera = camera_create();
-    camera_shift(camera, (vec3){0.0f, 0.0f, 3.0f});
+    glm_vec3_add(camera->pos, (vec3){0.0f, -3.0, 3.0}, camera->pos);
 
     // related to FPS/deltatime calculation
     double time_start, time_end;
@@ -426,6 +426,7 @@ int main() {
     printf("\n");
 
     dynarray_free(vaos);
+    camera_destroy(camera);
 
     glfwTerminate();
 
