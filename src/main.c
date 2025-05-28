@@ -20,6 +20,7 @@
 #include "vertex_spec.h"
 #include "input.h"
 #include "shader.h"
+#include "model.h"
 
 #include <main.h>
 
@@ -137,7 +138,7 @@ void initialize(GLFWwindow** window) {
 }
 
 // Render the scene to the screen
-void render_full(struct MVP mvp_original, GLuint shader_program1, GLuint shader_program2, GLuint shader_program3) {
+void render_full(struct MVP mvp_original, struct Model d3_model, GLuint shader_program1, GLuint shader_program2, GLuint shader_program3) {
     mat4 model, view, projection;
 
     // Original copies of the MVP are necessary to rollback changes to it
@@ -163,19 +164,6 @@ void render_full(struct MVP mvp_original, GLuint shader_program1, GLuint shader_
     // glm_vec3_copy(camera_original_pos, light_vec);
 
     // glm_vec3_rotate(light_vec, glfwGetTime()/1.2f, (vec3){0.0f, 1.0f, 0.0f});
-
-    vec3 cube_positions[] = {
-        {  0.0f,  0.0f,  0.0f  },
-        {  2.0f,  5.0f, -15.0f },
-        { -1.5f, -2.2f, -2.5f  },
-        { -3.8f, -2.0f, -12.3f },
-        {  2.4f, -0.4f, -3.5f  },
-        { -1.7f,  3.0f, -7.5f  },
-        {  1.3f, -2.0f, -2.5f  },
-        {  1.5f,  2.0f, -2.5f  },
-        {  1.5f,  0.2f, -1.5f  },
-        { -1.3f,  1.0f, -1.5f  }
-    };
 
     // Change the color of the lighting here
     vec3 color_change = {1.0f, 1.0f, 1.0f};
@@ -226,21 +214,16 @@ void render_full(struct MVP mvp_original, GLuint shader_program1, GLuint shader_
         glUniform3fv(glGetUniformLocation(shader_program1, "view_position"), 1, camera->pos);
     }
 
+    glm_rotate(model, glfwGetTime()/3, (vec3){0.0, 1.0, 0.0});
+    glm_scale(model, (vec3){1.0f, -1.0f, 1.0f});
+
+    glUniformMatrix4fv(glGetUniformLocation(shader_program1, "model"), 1, GL_FALSE, *model);
     glUniformMatrix4fv(glGetUniformLocation(shader_program1, "view"), 1, GL_FALSE, *view);
     glUniformMatrix4fv(glGetUniformLocation(shader_program1, "projection"), 1, GL_FALSE, *projection);
 
-    ///////// Cube /////////
-    // Draws cubes on different places
-    for (int i=0; i < sizeof(cube_positions)/sizeof(vec3); i++) {
-        glm_scale(model, (vec3){1.0f, 1.0f, 1.0f});
-        glm_translate(model, cube_positions[i]);
+    draw_model(d3_model, shader_program1);
 
-        glUniformMatrix4fv(glGetUniformLocation(shader_program1, "model"), 1, GL_FALSE, *model);
-
-        glDrawArrays(GL_TRIANGLES, 0, cube_vao.vertex_count);
-
-        glm_mat4_copy(mvp_original.model, model);
-    }
+    glm_mat4_copy(mvp_original.model, model);
 
     ///////// Light source /////////
     glBindVertexArray(light_cube_vao.vao);
@@ -269,9 +252,7 @@ void render_full(struct MVP mvp_original, GLuint shader_program1, GLuint shader_
     glUniformMatrix4fv(glGetUniformLocation(shader_program3, "view"), 1, GL_FALSE, *view);
     glUniformMatrix4fv(glGetUniformLocation(shader_program3, "projection"), 1, GL_FALSE, *projection);
 
-    // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     glDrawArrays(GL_LINES, 0, axis_vao.vertex_count);
-    // glPolygonMode(GL_FRONT_AND_BACK, GL_TRIANGLES);
 }
 
 int main() {
@@ -307,26 +288,28 @@ int main() {
     // Creating all the VAOs
     vertex_spec(vaos);
 
+    struct Model model = load_model("./models/backpack/backpack.obj");
+
     struct TextureWrap default_wrap = {
         GL_REPEAT, GL_REPEAT, 
         GL_LINEAR, GL_LINEAR_MIPMAP_LINEAR
     };
-
+    
     // Loading textures
     struct Texture diffuse_map = {
         load_texture("./textures/container2.png", GL_RGBA, default_wrap, false),
         TEXTT_DIFFUSE
     };
-
+    
     struct Texture specular_map = {
-        load_texture("./textures/container2_specular.png", GL_RGBA, default_wrap, false),
+        load_texture("./textures/full_spec_map.png", GL_RGBA, default_wrap, false),
         TEXTT_SPECULAR
     };
 
     glUseProgram(cube_shader_program);
     glUniform1i(glGetUniformLocation(cube_shader_program, "material.diffuse"), 0);
     glUniform1i(glGetUniformLocation(cube_shader_program, "material.specular"), 1);
-
+    
     camera = camera_create();
     glm_vec3_add(camera->pos, (vec3){0.0f, -3.0, 3.0}, camera->pos);
 
@@ -362,7 +345,7 @@ int main() {
         if (enable_3d) {
             // Basically this moves the camera left and right and recalculates its view matrix
             // to get a different image on each side of the screen, resulting in the 3D effect
-            
+
             // The size of the viewport changes when 3D mode is enabled, so the proj matrix should account for that
             glm_perspective(glm_rad(camera->fov), (window_width/2.0f)/(double)window_height, 0.01, 100, mvp.projection);
 
@@ -370,21 +353,21 @@ int main() {
             glViewport(0, 0, window_width/2, window_height);
             camera_shift(camera, (vec3){0.0f, D3_EYE_DISTANCE, 0.0f});
             camera_get_view_matrix(camera, &mvp.view);
-            render_full(mvp, cube_shader_program, light_cube_shader_program, axis_shader_program);
+            render_full(mvp, model, cube_shader_program, light_cube_shader_program, axis_shader_program);
             camera_shift(camera, (vec3){0.0f, -D3_EYE_DISTANCE, 0.0f});
 
             // Right half of the window
             glViewport(window_width/2, 0, window_width/2, window_height);
             camera_shift(camera, (vec3){0.0f, -D3_EYE_DISTANCE, 0.0f});
             camera_get_view_matrix(camera, &mvp.view);
-            render_full(mvp, cube_shader_program, light_cube_shader_program, axis_shader_program);
+            render_full(mvp, model, cube_shader_program, light_cube_shader_program, axis_shader_program);
             camera_shift(camera, (vec3){0.0f, D3_EYE_DISTANCE, 0.0f});
         } else {
             // Full window
             glm_perspective(glm_rad(camera->fov), (double)window_width/(double)window_height, 0.01, 100, mvp.projection);
 
             glViewport(0, 0, window_width, window_height);
-            render_full(mvp, cube_shader_program, light_cube_shader_program, axis_shader_program);
+            render_full(mvp, model, cube_shader_program, light_cube_shader_program, axis_shader_program);
         }
 
         // Updating window

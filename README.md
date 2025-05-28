@@ -3,6 +3,7 @@
 - [CGLM](https://github.com/recp/cglm)
     - [CMake](https://cmake.org/)
 - [GLFW](https://www.glfw.org/)
+- [Assimp](https://assimp.org/)
 - [GNU Make](https://www.gnu.org/software/make/)
 
 If you got all dependencies installed, simply build like so:
